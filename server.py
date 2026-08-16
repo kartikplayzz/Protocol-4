@@ -474,6 +474,30 @@ class LegalStudioHandler(SimpleHTTPRequestHandler):
             self.handle_api_documents()
             return
 
+        if parsed.path == '/api/document-content':
+            query = urllib.parse.parse_qs(parsed.query)
+            file_param = query.get('file', [''])[0]
+            if not file_param:
+                self.send_error(400, 'Missing file parameter')
+                return
+            safe_name = os.path.basename(file_param)
+            if not safe_name.endswith('.md'):
+                safe_name += '.md'
+            target_path = os.path.join(OUTPUT_DIR, safe_name)
+            if os.path.exists(target_path):
+                with open(target_path, 'r', encoding='utf-8', errors='replace') as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'filename': safe_name, 'content': content, 'size': len(content)}, ensure_ascii=False).encode('utf-8'))
+            else:
+                self.send_response(404)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': f'Document {safe_name} not found in E:\\PDF to MD\\'}, ensure_ascii=False).encode('utf-8'))
+            return
+
         if parsed.path.startswith('/api/document/'):
             doc_name = urllib.parse.unquote(parsed.path[len('/api/document/'):])
             self.handle_api_get_document(doc_name)
