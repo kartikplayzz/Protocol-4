@@ -676,9 +676,14 @@ def convert_pdf_to_markdown(
             max_threads = min(ocr_workers, len(image_pages))
             with ThreadPoolExecutor(max_workers=max_threads) as executor:
                 futures = {executor.submit(process_single_image_page, item): item[0] for item in image_pages.items()}
+                completed_img_pages = 0
+                total_img_pages = len(image_pages)
                 for future in as_completed(futures):
                     pno, content = future.result()
                     page_results[pno] = content
+                    completed_img_pages += 1
+                    if total_img_pages >= 5 and (completed_img_pages % 5 == 0 or completed_img_pages == total_img_pages):
+                        safe_print(f"PROGRESS: Processed {completed_img_pages}/{total_img_pages} pages ({int((completed_img_pages / total_img_pages) * 100)}%)...")
                     
         doc.close()
         
