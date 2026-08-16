@@ -1420,8 +1420,60 @@ function setDocFilter(filter) {
 }
 
 function filterDocuments() {
-  currentSearch = document.getElementById('docSearch').value;
+  const searchInput = document.getElementById('docSearch');
+  currentSearch = searchInput ? searchInput.value : '';
   renderDocumentsTable();
+}
+
+async function openDocPreview(filename, displayName) {
+  const modal = document.getElementById('docPreviewModal');
+  const title = document.getElementById('previewDocTitle');
+  const meta = document.getElementById('previewDocMeta');
+  const code = document.getElementById('previewCodeContent');
+
+  if (!modal || !code) return;
+
+  if (title) title.innerText = displayName || filename;
+  if (meta) meta.innerText = `E:\\PDF to MD\\${filename}`;
+  code.innerHTML = `<code>Loading document content from disk...</code>`;
+  modal.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`/api/document-content?file=${encodeURIComponent(filename)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.content) {
+        const escaped = data.content
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+        code.innerHTML = `<code>${escaped}</code>`;
+      } else {
+        code.innerHTML = `<code>${data.error || 'Empty document.'}</code>`;
+      }
+    } else {
+      code.innerHTML = `<code>Could not load document content. (Status ${res.status})</code>`;
+    }
+  } catch (e) {
+    code.innerHTML = `<code>Error fetching document content: ${e.message}</code>`;
+  }
+  lucide.createIcons();
+}
+
+function closeDocPreview() {
+  const modal = document.getElementById('docPreviewModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function copyPreviewMarkdown() {
+  const code = document.getElementById('previewCodeContent');
+  if (!code) return;
+  try {
+    await navigator.clipboard.writeText(code.innerText);
+    showToast("Copied Markdown", "Full document Markdown content copied to clipboard.", "success");
+  } catch (e) {
+    showToast("Copy Notice", "Could not copy automatically.", "warning");
+  }
 }
 
 // SOP Details
