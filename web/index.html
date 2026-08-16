@@ -878,20 +878,6 @@
                 </div>
               </div>
 
-              <!-- Preset Commands Quick Bar -->
-              <div class="cli-preset-bar">
-                <span class="preset-label"><i data-lucide="sparkles"></i> Quick Presets:</span>
-                <div class="preset-chips">
-                  <button class="preset-chip active" onclick="applyCliPreset('batch_standard')">⚡ Standard Batch</button>
-                  <button class="preset-chip" onclick="applyCliPreset('single_doc')">🎯 Single PDF</button>
-                  <button class="preset-chip" onclick="applyCliPreset('no_move')">🔒 Keep Source</button>
-                  <button class="preset-chip" onclick="applyCliPreset('docx_mode')">📝 Word DOCX</button>
-                  <button class="preset-chip" onclick="applyCliPreset('turbo_workers')">🚀 8 Workers Turbo</button>
-                  <button class="preset-chip" onclick="applyCliPreset('start_server')">🌐 Start Server</button>
-                  <button class="preset-chip" onclick="applyCliPreset('bootstrap_env')">📦 Setup Env</button>
-                </div>
-              </div>
-
               <!-- CLI Terminal Body -->
               <div class="magic-terminal-body cli-term-body">
                 <div class="magic-terminal-scanlines"></div>
@@ -907,152 +893,13 @@
                 </div>
 
                 <div class="cli-terminal-log-preview">
-                  <div class="cli-preview-line"><span class="l-tag tag-info">INFO</span> Initializing Pure Local Marathi Legal Intelligence Engine...</div>
-                  <div class="cli-preview-line"><span class="l-tag tag-success">READY</span> Models Active: <code>mar (Marathi)</code> + <code>eng (English)</code></div>
-                  <div class="cli-preview-line"><span class="l-tag tag-hardware">GPU</span> Hardware Matrix: Multi-Core / OpenCL Matrix Active</div>
+                  <div class="cli-preview-line"><span class="l-tag tag-info">INFO</span> Initializing High-Performance Hybrid OCR Engine...</div>
+                  <div class="cli-preview-line"><span class="l-tag tag-success">READY</span> Language Models Active: <code>mar (Marathi)</code> + <code>eng (English)</code></div>
+                  <div class="cli-preview-line"><span class="l-tag tag-hardware">GPU</span> Silent Hardware Auto-Detector: Multi-Core / OpenCL Matrix</div>
                   <div class="cli-preview-divider">============================================================</div>
                   <div class="cli-preview-line text-blue">Ready to process incoming .pdf and .docx documents strictly in E:\PDF\</div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <!-- Complete CLI Command Reference Suite -->
-          <div class="stitch-card full-width-card" style="margin-top: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <div>
-                <h3 class="card-heading" style="font-size: 1.05rem;">
-                  <i data-lucide="terminal" style="width: 18px; height: 18px; color: #1d68f2; display: inline-block; vertical-align: middle;"></i>
-                  Complete CLI Command Catalog &amp; Execution Reference
-                </h3>
-                <p class="text-muted" style="font-size: 0.775rem;">All standalone command-line instructions ready to run in PowerShell or Command Prompt</p>
-              </div>
-            </div>
-
-            <div class="cli-commands-table-wrap">
-              <table class="cli-commands-table">
-                <thead>
-                  <tr>
-                    <th style="width: 22%;">Execution Task</th>
-                    <th style="width: 63%;">Full PowerShell / Terminal Command</th>
-                    <th style="width: 15%; text-align: right;">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>
-                      <strong>Standard Batch Ingestion</strong>
-                      <span class="cmd-desc">Processes all queue files and moves to archive</span>
-                    </td>
-                    <td>
-                      <code class="cmd-code-block">python "E:\python\process_pdf_to_md.py" --batch --input "E:\PDF" --output "E:\PDF to MD" --workers 6 --completed-dir "E:\Completed PDF file Extraction"</code>
-                    </td>
-                    <td style="text-align: right;">
-                      <button class="stitch-btn-secondary btn-sm" onclick="copyExactCliText('python \"E:\\\\python\\\\process_pdf_to_md.py\" --batch --input \"E:\\\\PDF\" --output \"E:\\\\PDF to MD\" --workers 6 --completed-dir \"E:\\\\Completed PDF file Extraction\"', this)">
-                        <i data-lucide="copy"></i> Copy
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>Single File Targeted Extraction</strong>
-                      <span class="cmd-desc">Converts one specific document and archives it</span>
-                    </td>
-                    <td>
-                      <code class="cmd-code-block">python "E:\python\process_pdf_to_md.py" "E:\PDF\35. Arrest Guidelines.pdf" --output "E:\PDF to MD" --completed-dir "E:\Completed PDF file Extraction"</code>
-                    </td>
-                    <td style="text-align: right;">
-                      <button class="stitch-btn-secondary btn-sm" onclick="copyExactCliText('python \"E:\\\\python\\\\process_pdf_to_md.py\" \"E:\\\\PDF\\\\35. Arrest Guidelines.pdf\" --output \"E:\\\\PDF to MD\" --completed-dir \"E:\\\\Completed PDF file Extraction\"', this)">
-                        <i data-lucide="copy"></i> Copy
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>Isolated Extraction (No Move)</strong>
-                      <span class="cmd-desc">Converts document without moving original source</span>
-                    </td>
-                    <td>
-                      <code class="cmd-code-block">python "E:\python\process_pdf_to_md.py" "E:\Completed PDF file Extraction\2. Spot Panchnama.pdf" --output "E:\PDF to MD" --no-move</code>
-                    </td>
-                    <td style="text-align: right;">
-                      <button class="stitch-btn-secondary btn-sm" onclick="copyExactCliText('python \"E:\\\\python\\\\process_pdf_to_md.py\" \"E:\\\\Completed PDF file Extraction\\\\2. Spot Panchnama.pdf\" --output \"E:\\\\PDF to MD\" --no-move', this)">
-                        <i data-lucide="copy"></i> Copy
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>Word (.docx) Document Mode</strong>
-                      <span class="cmd-desc">Converts Word document via MarkItDown</span>
-                    </td>
-                    <td>
-                      <code class="cmd-code-block">python "E:\python\process_pdf_to_md.py" "E:\PDF\police_form.docx" --output "E:\PDF to MD"</code>
-                    </td>
-                    <td style="text-align: right;">
-                      <button class="stitch-btn-secondary btn-sm" onclick="copyExactCliText('python \"E:\\\\python\\\\process_pdf_to_md.py\" \"E:\\\\PDF\\\\police_form.docx\" --output \"E:\\\\PDF to MD\"', this)">
-                        <i data-lucide="copy"></i> Copy
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>High-Performance Turbo (8 Threads)</strong>
-                      <span class="cmd-desc">Maximum multi-core parallel extraction</span>
-                    </td>
-                    <td>
-                      <code class="cmd-code-block">python "E:\python\process_pdf_to_md.py" --batch --input "E:\PDF" --output "E:\PDF to MD" --workers 8</code>
-                    </td>
-                    <td style="text-align: right;">
-                      <button class="stitch-btn-secondary btn-sm" onclick="copyExactCliText('python \"E:\\\\python\\\\process_pdf_to_md.py\" --batch --input \"E:\\\\PDF\" --output \"E:\\\\PDF to MD\" --workers 8', this)">
-                        <i data-lucide="copy"></i> Copy
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>Start Web Studio Backend Daemon</strong>
-                      <span class="cmd-desc">Launches multi-threaded HTTP server on port 8080</span>
-                    </td>
-                    <td>
-                      <code class="cmd-code-block">python "E:\python\server.py"</code>
-                    </td>
-                    <td style="text-align: right;">
-                      <button class="stitch-btn-secondary btn-sm" onclick="copyExactCliText('python \"E:\\\\python\\\\server.py\"', this)">
-                        <i data-lucide="copy"></i> Copy
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>Machine Environment Setup &amp; Health</strong>
-                      <span class="cmd-desc">Auto-installs packages and checks Tesseract 5.5 path</span>
-                    </td>
-                    <td>
-                      <code class="cmd-code-block">python "E:\python\bootstrap_environment.py"</code>
-                    </td>
-                    <td style="text-align: right;">
-                      <button class="stitch-btn-secondary btn-sm" onclick="copyExactCliText('python \"E:\\\\python\\\\bootstrap_environment.py\"', this)">
-                        <i data-lucide="copy"></i> Copy
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <strong>1-Click Portable Windows Launcher</strong>
-                      <span class="cmd-desc">Automated batch file for fresh PC installs</span>
-                    </td>
-                    <td>
-                      <code class="cmd-code-block">"E:\Protocol-4\install_and_run.bat"</code>
-                    </td>
-                    <td style="text-align: right;">
-                      <button class="stitch-btn-secondary btn-sm" onclick="copyExactCliText('\"E:\\\\Protocol-4\\\\install_and_run.bat\"', this)">
-                        <i data-lucide="copy"></i> Copy
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
             </div>
           </div>
         </section>
