@@ -376,35 +376,80 @@
               </div>
             </div>
 
-            <!-- 600px Height Terminal Output -->
-            <div class="stitch-terminal">
-              <div class="terminal-top">
-                <div class="term-dots">
-                  <span class="dot red"></span>
-                  <span class="dot yellow"></span>
-                  <span class="dot green"></span>
-                  <span class="term-name">Live Pipeline Output Stream &bull; Extraction Protocol</span>
+            <!-- Magic UI Terminal Window (Height: 600px) -->
+            <div class="magic-terminal-window" id="magicTerminal">
+              <div class="magic-terminal-header">
+                <div class="magic-terminal-dots">
+                  <span class="m-dot m-dot-red" title="Close"></span>
+                  <span class="m-dot m-dot-yellow" title="Minimize"></span>
+                  <span class="m-dot m-dot-green" title="Expand"></span>
                 </div>
-                <div class="term-btns">
-                  <button class="btn-term-action" onclick="clearTerminalLogs()"><i data-lucide="trash-2"></i> Clear</button>
-                  <button class="btn-term-action" onclick="copyTerminalLogs()"><i data-lucide="copy"></i> Copy</button>
+                <div class="magic-terminal-title">
+                  <i data-lucide="terminal" class="term-icon"></i>
+                  <span class="term-user">protocol-4@legal-studio</span>
+                  <span class="term-sep">:</span>
+                  <span class="term-path">~/pipeline-stream</span>
+                  <span class="magic-term-status-chip live" id="termLiveStatus">
+                    <span class="chip-pulse"></span> LIVE STREAM
+                  </span>
+                </div>
+                <div class="magic-terminal-actions">
+                  <button class="m-term-btn active" id="btnAutoScroll" onclick="toggleAutoScroll()" title="Toggle Auto-Scroll">
+                    <i data-lucide="arrow-down-to-line"></i> <span id="autoScrollLabel">Auto-Scroll: ON</span>
+                  </button>
+                  <button class="m-term-btn" onclick="clearTerminalLogs()" title="Clear Terminal Output">
+                    <i data-lucide="trash-2"></i> <span>Clear</span>
+                  </button>
+                  <button class="m-term-btn" id="btnCopyTerm" onclick="copyTerminalLogs()" title="Copy Logs">
+                    <i data-lucide="copy" id="iconCopyTerm"></i> <span id="labelCopyTerm">Copy</span>
+                  </button>
+                  <button class="m-term-btn m-term-expand" onclick="toggleTerminalFullscreen()" title="Toggle Fullscreen">
+                    <i data-lucide="maximize-2" id="iconFullscreen"></i>
+                  </button>
                 </div>
               </div>
-              <div class="terminal-log-scroll" id="terminalLogsContainer">
-                <div class="log-line info">
-                  <span class="l-time">[12:55:00]</span>
-                  <span class="l-tag tag-info">INFO</span>
-                  <span class="l-msg">Extraction Protocol initialized. Queue bound strictly to 'E:\PDF\'.</span>
+
+              <!-- Magic Terminal Body -->
+              <div class="magic-terminal-body">
+                <div class="magic-terminal-scanlines"></div>
+                <div class="magic-terminal-glow"></div>
+
+                <!-- Interactive Command Line Prompt -->
+                <div class="magic-terminal-prompt-row">
+                  <span class="prompt-user">kartik@protocol4</span>
+                  <span class="prompt-colon">:</span>
+                  <span class="prompt-dir">/legal-engine</span>
+                  <span class="prompt-char">$</span>
+                  <span class="prompt-cmd">python process_pdf_to_md.py --ingest "E:\PDF" --smart-hybrid --gpu</span>
                 </div>
-                <div class="log-line info">
-                  <span class="l-time">[12:55:01]</span>
-                  <span class="l-tag tag-info">ENV</span>
-                  <span class="l-msg">Tesseract 5.5 path: C:\Users\Kartikplayzz\AppData\Local\Programs\Tesseract-OCR\tesseract.exe</span>
+
+                <!-- Log Stream Scroll Area -->
+                <div class="magic-terminal-scroll" id="terminalLogsContainer">
+                  <div class="log-line info">
+                    <span class="l-idx">#001</span>
+                    <span class="l-time">[01:10:39]</span>
+                    <span class="l-tag tag-info">INFO</span>
+                    <span class="l-msg">Extraction Protocol initialized. Queue bound strictly to 'E:\PDF\'.</span>
+                  </div>
+                  <div class="log-line info">
+                    <span class="l-idx">#002</span>
+                    <span class="l-time">[01:10:39]</span>
+                    <span class="l-tag tag-info">ENV</span>
+                    <span class="l-msg">Tesseract 5.5 path: C:\Users\Kartikplayzz\AppData\Local\Programs\Tesseract-OCR\tesseract.exe</span>
+                  </div>
+                  <div class="log-line success">
+                    <span class="l-idx">#003</span>
+                    <span class="l-time">[01:10:39]</span>
+                    <span class="l-tag tag-success">READY</span>
+                    <span class="l-msg">Language models active: mar (Marathi), eng (English), osd. Ready for processing.</span>
+                  </div>
                 </div>
-                <div class="log-line success">
-                  <span class="l-time">[12:55:01]</span>
-                  <span class="l-tag tag-success">READY</span>
-                  <span class="l-msg">Language models active: mar (Marathi), eng (English), osd. Ready for single/multi file processing.</span>
+
+                <!-- Footer Terminal Prompt -->
+                <div class="magic-terminal-footer-prompt">
+                  <span class="prompt-char-tail">&gt;</span>
+                  <span class="terminal-running-hint" id="terminalRunningHint">Stream active &bull; Listening to background worker...</span>
+                  <span class="magic-terminal-cursor"></span>
                 </div>
               </div>
             </div>
