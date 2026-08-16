@@ -694,24 +694,126 @@ function onWorkerCountChange(val) {
   }
 }
 
+let autoScrollEnabled = true;
+let terminalLogCounter = 3;
+
+function toggleAutoScroll() {
+  autoScrollEnabled = !autoScrollEnabled;
+  const btn = document.getElementById('btnAutoScroll');
+  const label = document.getElementById('autoScrollLabel');
+  if (btn && label) {
+    if (autoScrollEnabled) {
+      btn.classList.add('active');
+      label.innerText = 'Auto-Scroll: ON';
+      const container = document.getElementById('terminalLogsContainer');
+      if (container) container.scrollTop = container.scrollHeight;
+    } else {
+      btn.classList.remove('active');
+      label.innerText = 'Auto-Scroll: OFF';
+    }
+  }
+}
+
+function clearTerminalLogs() {
+  const container = document.getElementById('terminalLogsContainer');
+  if (container) {
+    container.innerHTML = `
+      <div class="log-line info">
+        <span class="l-idx">#001</span>
+        <span class="l-time">[${new Date().toTimeString().split(' ')[0]}]</span>
+        <span class="l-tag tag-info">STREAM</span>
+        <span class="l-msg">Terminal buffer cleared. Active pipeline monitoring bound to 'E:\\PDF\\'.</span>
+      </div>
+    `;
+    terminalLogCounter = 1;
+    showToast("Terminal Cleared", "Log stream history reset.", "info");
+  }
+}
+
+async function copyTerminalLogs() {
+  const container = document.getElementById('terminalLogsContainer');
+  const btn = document.getElementById('btnCopyTerm');
+  const icon = document.getElementById('iconCopyTerm');
+  const label = document.getElementById('labelCopyTerm');
+  if (!container) return;
+
+  const lines = Array.from(container.querySelectorAll('.log-line')).map(el => {
+    const time = el.querySelector('.l-time')?.innerText || '';
+    const tag = el.querySelector('.l-tag')?.innerText || '';
+    const msg = el.querySelector('.l-msg')?.innerText || '';
+    return `${time} [${tag}] ${msg}`;
+  }).join('\n');
+
+  try {
+    await navigator.clipboard.writeText(lines);
+    if (label) label.innerText = 'Copied! ✓';
+    if (btn) btn.classList.add('active');
+    setTimeout(() => {
+      if (label) label.innerText = 'Copy';
+      if (btn) btn.classList.remove('active');
+    }, 2000);
+    showToast("Copied to Clipboard", "Terminal log stream exported.", "success");
+  } catch (e) {
+    showToast("Copy Failed", "Please copy text manually.", "warning");
+  }
+}
+
+function toggleTerminalFullscreen() {
+  const term = document.getElementById('magicTerminal');
+  const icon = document.getElementById('iconFullscreen');
+  if (!term) return;
+
+  const isFull = term.classList.toggle('fullscreen');
+  if (icon) {
+    icon.setAttribute('data-lucide', isFull ? 'minimize-2' : 'maximize-2');
+    lucide.createIcons();
+  }
+
+  // Handle ESC key to exit fullscreen
+  if (isFull) {
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        term.classList.remove('fullscreen');
+        if (icon) {
+          icon.setAttribute('data-lucide', 'maximize-2');
+          lucide.createIcons();
+        }
+        window.removeEventListener('keydown', escHandler);
+      }
+    };
+    window.addEventListener('keydown', escHandler);
+  }
+}
+
 function renderServerTerminalLog(entry) {
   const container = document.getElementById('terminalLogsContainer');
   if (!container) return;
 
+  terminalLogCounter++;
+  const idxStr = '#' + String(terminalLogCounter).padStart(3, '0');
+
   let tagClass = 'tag-info';
-  if (entry.type === 'success') tagClass = 'tag-success';
-  if (entry.type === 'warn' || entry.type === 'warning') tagClass = 'tag-warn';
-  if (entry.type === 'error') tagClass = 'tag-error';
+  const tagUpper = (entry.tag || '').toUpperCase();
+  if (entry.type === 'success' || tagUpper === 'SUCCESS' || tagUpper === 'COMPLETE') tagClass = 'tag-success';
+  else if (entry.type === 'warn' || entry.type === 'warning' || tagUpper === 'WARN') tagClass = 'tag-warn';
+  else if (entry.type === 'error' || tagUpper === 'ERROR' || tagUpper === 'FAILED') tagClass = 'tag-error';
+  else if (tagUpper === 'PROTOCOL') tagClass = 'tag-protocol';
+  else if (tagUpper === 'INGEST') tagClass = 'tag-ingest';
+  else if (tagUpper === 'HARDWARE' || tagUpper === 'GPU') tagClass = 'tag-hardware';
 
   const row = document.createElement('div');
-  row.className = `log-line ${entry.type}`;
+  row.className = `log-line ${entry.type || 'info'}`;
   row.innerHTML = `
+    <span class="l-idx">${idxStr}</span>
     <span class="l-time">${entry.time}</span>
     <span class="l-tag ${tagClass}">${entry.tag}</span>
     <span class="l-msg">${entry.msg}</span>
   `;
   container.appendChild(row);
-  container.scrollTop = container.scrollHeight;
+
+  if (autoScrollEnabled) {
+    container.scrollTop = container.scrollHeight;
+  }
 }
 
 // Execute Real Sequential Multi-File Extraction via API (Persistent Backend Runner)
