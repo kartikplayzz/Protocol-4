@@ -45,7 +45,7 @@ if os.path.exists(TESSERACT_EXE):
 SUPPORTED_EXTENSIONS = ('.pdf', '.docx')
 
 # Legacy / Non-Unicode CCTNS font character set
-CORRUPT_FONT_CHARS = set("¯ÖÓ®´ê£ôû¤ü¸ßµÝãæ¥¿²Öî•§Ö×ÛÎú¾ÖÂ™Ò†Ö™ü‡ÝÖÏÀ±")
+CORRUPT_FONT_CHARS = set("¯ÖÓ®´ê£ôû¤ü¸ßµÝãæ¥¿²Öî•§Ö×ÛÎú¾ÖÂ™Ò†Ö™ü‡ÝÖÏÀ±ȡĤš“ǓĆȨ¡ǕƧ‘ȰȲǑɉǔÛƻæȶ•œ×ǽ¢œ¡ȾÍ")
 
 GAZETTE_PATTERNS = [
     r"^.*महाराष्ट्र शासन राजपत्र.*$",
