@@ -262,42 +262,20 @@
               <p class="section-desc">Strict execution protocol: Detects queue, converts documents sequentially (one by one), and archives source files.</p>
             </div>
             <div class="section-actions" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-              <!-- Workflow Mode Selector -->
-              <div class="worker-select-control">
-                <label for="engineModeSelect" class="worker-select-label">
-                  <i data-lucide="layers" style="width:14px;height:14px;color:#1d68f2;"></i> Workflow Mode:
-                </label>
-                <select id="engineModeSelect" class="worker-dropdown-select" onchange="onEngineModeChange(this.value)">
-                  <option value="smart_hybrid" selected>🤖 Smart Hybrid (Auto-Route)</option>
-                  <option value="local_offline">💻 Local Offline (MarkItDown + Tesseract)</option>
-                  <option value="cloud_ai">🚀 Cloud AI Vision (Gemini Flash)</option>
-                </select>
-              </div>
-
               <!-- Parallel Workers Selector -->
               <div class="worker-select-control">
                 <label for="parallelWorkersSelect" class="worker-select-label">
-                  <i data-lucide="cpu" style="width:14px;height:14px;color:#1d68f2;"></i> Workers / Concurrency:
+                  <i data-lucide="cpu" style="width:14px;height:14px;color:#1d68f2;"></i> Parallel Workers:
                 </label>
                 <select id="parallelWorkersSelect" class="worker-dropdown-select" onchange="onWorkerCountChange(this.value)">
-                  <optgroup label="💻 CPU Multi-Threading">
-                    <option value="4">4 CPU Workers</option>
-                    <option value="6" selected>6 CPU Workers (Recommended)</option>
-                    <option value="8">8 CPU Workers (High Performance)</option>
-                    <option value="12">12 CPU Workers (Multi-Core Max)</option>
-                  </optgroup>
-                  <optgroup label="🚀 GPU Hardware Acceleration">
-                    <option value="gpu-6">🚀 GPU Accelerated (OpenCL + 6 Threads)</option>
-                    <option value="gpu-8">⚡ GPU Turbo (OpenCL + 8 Threads)</option>
-                  </optgroup>
+                  <option value="4">4 CPU Workers</option>
+                  <option value="6" selected>6 CPU Workers (Recommended)</option>
+                  <option value="8">8 CPU Workers (High Performance)</option>
+                  <option value="12">12 CPU Workers (Multi-Core Max)</option>
                 </select>
               </div>
 
-              <!-- AI Key Settings Quick Action -->
-              <button class="stitch-btn-secondary" onclick="openAiKeyModal()" title="Configure optional Gemini / Cloud AI Key">
-                <i data-lucide="key"></i> <span>AI Key</span>
-              </button>
-
+              <!-- Main Execution Controls -->
               <button class="stitch-btn-primary" id="btnStartPipeline" onclick="initiateExtractionProtocol()">
                 <i data-lucide="play"></i> <span>Run Pipeline</span>
               </button>
@@ -1048,42 +1026,7 @@
     </div>
   </div>
 
-  <!-- Optional Cloud AI API Key Configuration Modal -->
-  <div id="aiKeyConfigModal" class="modal-backdrop hidden">
-    <div class="modal-dialog" style="max-width: 540px; width: 92%;">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <div class="card-icon-wrap blue" style="width: 36px; height: 36px; border-radius: 8px;">
-            <i data-lucide="key"></i>
-          </div>
-          <div>
-            <h4>Cloud AI Vision API Key</h4>
-            <span class="modal-meta">Optional key for Gemini Multimodal Vision</span>
-          </div>
-        </div>
-        <button class="icon-circle-btn" onclick="closeAiKeyModal()"><i data-lucide="x"></i></button>
-      </div>
-      <div class="modal-body" style="padding: 1.25rem;">
-        <p style="color:#64748b; font-size:0.85rem; margin-bottom:1rem; line-height:1.5;">
-          Enter your <strong>Google Gemini API Key</strong> to enable <strong>Lane B (Cloud AI Vision)</strong> for complex scanned photocopies and RTI forms. If left empty, the pipeline uses 100% free local OCR.
-        </p>
 
-        <div class="stitch-form-group" style="margin-bottom: 1.25rem;">
-          <label class="form-label" for="geminiApiKeyInput">Gemini API Key (AIzaSy...):</label>
-          <input type="password" id="geminiApiKeyInput" placeholder="Paste your API key here (Optional)" class="stitch-input" style="font-family: monospace;">
-          <small style="color:#94a3b8; font-size:0.75rem; margin-top:4px; display:block;">Key is stored locally in your browser and never shared.</small>
-        </div>
-
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <button class="stitch-btn-secondary btn-sm" onclick="clearAiKey()">Clear Key</button>
-          <div style="display:flex; gap:0.5rem;">
-            <button class="stitch-btn-secondary" onclick="closeAiKeyModal()">Cancel</button>
-            <button class="stitch-btn-primary" onclick="saveAiKey()">Save Configuration</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- System Health & Portable Machine Setup Modal (Shown ONLY when dependencies are missing on another PC) -->
   <div id="systemHealthModal" class="modal-backdrop hidden">
