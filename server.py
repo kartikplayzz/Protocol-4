@@ -206,7 +206,16 @@ class PipelineManager:
                     self.milestone_step = 4
 
                 cmd = [sys.executable, PYTHON_SCRIPT, doc_path]
-                proc = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8')
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', bufsize=1)
+                for line in iter(proc.stdout.readline, ''):
+                    l_clean = line.strip()
+                    if not l_clean:
+                        continue
+                    if "PROGRESS:" in l_clean:
+                        prog_text = l_clean.replace("PROGRESS:", "").strip()
+                        self.add_log("PROGRESS", f"[{file_num}/{total}] {doc_name}: {prog_text}", "info")
+                proc.stdout.close()
+                proc.wait()
                 elapsed = round(time.time() - start_t, 1)
 
                 if proc.returncode == 0:
@@ -253,7 +262,16 @@ class PipelineManager:
                 self.progress_percent = 50
 
             cmd = [sys.executable, PYTHON_SCRIPT, target_path]
-            proc = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8')
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', bufsize=1)
+            for line in iter(proc.stdout.readline, ''):
+                l_clean = line.strip()
+                if not l_clean:
+                    continue
+                if "PROGRESS:" in l_clean:
+                    prog_text = l_clean.replace("PROGRESS:", "").strip()
+                    self.add_log("PROGRESS", f"{target_filename}: {prog_text}", "info")
+            proc.stdout.close()
+            proc.wait()
             elapsed = round(time.time() - start_t, 1)
 
             if proc.returncode == 0:
