@@ -61,13 +61,50 @@ GAZETTE_PATTERNS = [
     r"^\s*\[\s*Pages\s*\d+\s*\]\s*$",
 ]
 
+SCANNER_WATERMARK_PATTERNS = [
+    r"(?i)^[©c\s]*scanned\s+(?:with|by)\s+oken\s+scanner.*$",
+    r"(?i)^[©c\s]*scanned\s+(?:with|by)\s+camscanner.*$",
+    r"(?i)^[©c\s]*scanned\s+(?:with|by)\s+adobe\s+scan.*$",
+    r"(?i)^[©c\s]*scanned\s+(?:with|by)\s+fast\s+scanner.*$",
+    r"(?i)^[©c\s]*scanned\s+(?:with|by)\s+doc\s+scanner.*$",
+    r"(?i)^[©c\s]*scanned\s+(?:with|by)\s+clear\s+scanner.*$",
+    r"(?i)^[©c\s]*scanned\s+(?:with|by)\s+vflat.*$",
+    r"(?i)^[©c\s]*scanned\s+with\s+scanner\s+app.*$",
+    r"^(?:M\.R\.W\.?|M\s*R\s*W)$",
+    r"^(?:CS\s+CamScanner|CamScanner)$",
+]
+
+
+def clean_scanner_watermarks(text: str) -> str:
+    """Strips mobile scanner app watermarks and marginal stamp codes."""
+    lines = text.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            cleaned_lines.append("")
+            continue
+            
+        is_watermark = False
+        for pat in SCANNER_WATERMARK_PATTERNS:
+            if re.fullmatch(pat, stripped, re.IGNORECASE) or (len(stripped) < 60 and re.search(pat, stripped, re.IGNORECASE)):
+                is_watermark = True
+                break
+                
+        if is_watermark:
+            continue
+            
+        cleaned_lines.append(line)
+        
+    return '\n'.join(cleaned_lines)
+
 
 def is_corrupted_or_legacy_font(text: str) -> bool:
     """Detects if extracted PDF text is corrupted non-Unicode, Shivaji, KrutiDev, or ASCII font mappings."""
     if not text or len(text.strip()) < 10:
         return True
     
-    # Check corrupted non-Unicode symbol density
     corrupt_count = sum(1 for c in text if c in CORRUPT_FONT_CHARS)
     if len(text) > 0 and (corrupt_count / len(text)) > 0.02:
         return True
@@ -191,7 +228,6 @@ def repair_marathi_ocr_and_numbered_lists(text: str) -> str:
     for pattern, repl in replacements:
         cleaned = re.sub(pattern, repl, cleaned)
 
-    # Rejoin orphaned numbered list headers (e.g. "१०.\n\nमजकूर" -> "१०. मजकूर")
     cleaned = re.sub(r'(\n(?:[०-९\d]{1,3}|[a-zA-Z\(\)]+)\.)\s*\n\s*([^\n])', r'\1 \2', cleaned)
     return cleaned
 
@@ -207,13 +243,11 @@ def format_legal_markdown_structure(text: str) -> str:
             formatted.append("")
             continue
             
-        # Format standalone Section headers: e.g. "कलम ४. व्याख्या" -> "### कलम ४. व्याख्या"
         if re.match(r'^(?:कलम|Section|पोट-कलम|अनुसूची|प्रकरण)\s+[०-९\d]+[A-Za-z\.\-\s]+', stripped) and len(stripped) < 80:
             if not stripped.startswith('#'):
                 formatted.append(f"### {stripped}")
                 continue
                 
-        # Format true signature blocks
         if re.match(r'^(?:सही|स्वाक्षरी|Signature|Seal|Stamp)\s*[:\/\-]', stripped, re.IGNORECASE):
             formatted.append(f"\n> **{stripped}**\n")
             continue
@@ -224,7 +258,7 @@ def format_legal_markdown_structure(text: str) -> str:
 
 
 def clean_form_blanks_and_tables(text: str) -> str:
-    """Suppresses OCR dotted-line hallucinations and symbol loops (* % 1 7 9) into clean blanks."""
+    """Suppresses OCR dotted-line hallucinations and symbol loops into clean blanks."""
     lines = text.split('\n')
     cleaned_lines = []
     
@@ -234,7 +268,6 @@ def clean_form_blanks_and_tables(text: str) -> str:
             cleaned_lines.append("")
             continue
             
-        # Detect hallucinated dotted-line symbol noise (e.g. "* ***१*१*%*१*१*१**")
         symbol_count = len(re.findall(r'[\*\%\$\#\@\!\?\^\|\_\.\-\~\\\/]', stripped))
         digits_and_dots = len(re.findall(r'[०-९0-9\.\s]', stripped))
         total_len = len(stripped)
@@ -244,12 +277,10 @@ def clean_form_blanks_and_tables(text: str) -> str:
                 cleaned_lines.append("________________________________________________________")
                 continue
                 
-        # Suppress repetitive dotted line underscores
         if re.fullmatch(r'[\.\_\-\s]{6,}', stripped):
             cleaned_lines.append("________________________________________________________")
             continue
             
-        # Suppress repetitive syllable loops (e.g. "POOH POOH POOH")
         cleaned_line = re.sub(r'\b([A-Za-z]{2,8})\b(?:\s+\1\b){3,}', r'\1', stripped)
         cleaned_lines.append(cleaned_line)
         
@@ -298,7 +329,6 @@ def preprocess_image_for_ocr(np_image: np.ndarray) -> np.ndarray:
     except Exception:
         pass
 
-    # CPU Fallback
     gray = cv2.cvtColor(np_image, cv2.COLOR_RGB2GRAY)
     denoised = cv2.bilateralFilter(gray, d=5, sigmaColor=50, sigmaSpace=50)
     clahe = cv2.createCLAHE(clipLimit=2.2, tileGridSize=(8, 8))
@@ -327,9 +357,9 @@ def convert_pdf_to_markdown(
 ) -> dict:
     """
     100% Robust Local PDF Conversion Engine:
-    - Analyzes font integrity on every page (auto-detects Shivaji / CCTNS / non-Unicode corruptions).
+    - Automatically strips scanner watermarks (OKEN Scanner, CamScanner, Adobe Scan, M.R.W).
     - True Unicode Marathi Vector PDFs -> PyMuPDF Instant Text Stream.
-    - Scanned Photocopies / Legacy Font PDFs -> 300 DPI OpenCV CLAHE + Tesseract 5.5 (mar+eng) OCR.
+    - Scanned Photocopies / Legacy Font PDFs -> 300 DPI OpenCV CLAHE + Tesseract 5.5 OCR.
     - Post-processes with full Marathi Legal NLP Sanitizer.
     """
     start_time = time.time()
@@ -360,23 +390,19 @@ def convert_pdf_to_markdown(
         digital_pages = {}
         image_pages = {}
         
-        # Analyze font integrity page by page
         for pno in range(total_pages):
             page = doc[pno]
             raw_text = page.get_text("text").strip()
             
-            # If text is clean Unicode Devanagari / English without font corruption, use digital stream
             if len(raw_text) > 120 and contains_devanagari(raw_text) and not is_corrupted_or_legacy_font(raw_text):
                 digital_pages[pno] = raw_text
             else:
-                # Page is either a scanned image OR has corrupted non-Unicode font -> Route to 300 DPI OCR!
                 image_pages[pno] = page
                 
         page_results = {}
         for pno, text in digital_pages.items():
             page_results[pno] = text
             
-        # Process OCR image pages in parallel
         if image_pages:
             def process_single_image_page(item):
                 pno, page = item
@@ -415,7 +441,8 @@ def convert_pdf_to_markdown(
         cleaned_md = clean_gazette_boilerplate(marginal_cleaned)
         spaced_md = repair_english_word_spacing(cleaned_md)
         repaired_md = repair_marathi_ocr_and_numbered_lists(spaced_md)
-        form_cleaned_md = clean_form_blanks_and_tables(repaired_md)
+        wm_cleaned_md = clean_scanner_watermarks(repaired_md)
+        form_cleaned_md = clean_form_blanks_and_tables(wm_cleaned_md)
         final_md = format_legal_markdown_structure(form_cleaned_md)
         
         with open(out_md_path, "w", encoding="utf-8") as f:
@@ -424,7 +451,6 @@ def convert_pdf_to_markdown(
         result["success"] = True
         result["output_size_bytes"] = os.path.getsize(out_md_path)
         
-        # Move processed file to archive
         if completed_dir and os.path.exists(pdf_path):
             os.makedirs(completed_dir, exist_ok=True)
             target_dest = os.path.join(completed_dir, filename)
@@ -468,7 +494,7 @@ def convert_docx_to_markdown(docx_path: str, output_dir: str, completed_dir: str
         
         header = f"# {base_name}\n\n> **Source File**: `{filename}`  \n> **Engine**: Microsoft MarkItDown 0.1.7  \n> **Extraction Date**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n---\n\n"
         
-        cleaned_text = clean_form_blanks_and_tables(repair_marathi_ocr_and_numbered_lists(raw_text))
+        cleaned_text = clean_form_blanks_and_tables(clean_scanner_watermarks(repair_marathi_ocr_and_numbered_lists(raw_text)))
         final_md = header + cleaned_text
         
         with open(out_md_path, "w", encoding="utf-8") as f:
