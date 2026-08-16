@@ -502,8 +502,86 @@ def process_page_worker(pdf_path: str, page_num: int, target_dpi: int = 200) -> 
         return page_num, f"[Error processing page {page_num+1}: {e}]"
 
 
-def convert_pdf_to_markdown(pdf_path: str, output_dir: str, completed_dir: str = None, ocr_workers: int = 4) -> dict:
-    """Converts a PDF file to a structured Markdown file following the 6-step SOP."""
+
+# ----------------------------------------------------------------------
+# SMART HYBRID WORKFLOW: LANE B - CLOUD AI VISION (GEMINI MULTIMODAL)
+# ----------------------------------------------------------------------
+
+def ocr_page_image_with_gemini_vision(pil_img: Image.Image, api_key: str) -> str:
+    """Extracts Marathi legal text and structured tables from a page image using Gemini Multimodal Vision API."""
+    if not api_key:
+        return ""
+        
+    buffered = io.BytesIO()
+    # Optimize image size for fast transmission
+    pil_img.save(buffered, format="PNG", optimize=True)
+    img_b64 = base64.b64encode(buffered.getvalue()).decode("ascii")
+    
+    prompt = (
+        "You are an expert Marathi legal document transcription system. "
+        "Transcribe this legal document page image into clean, structured Markdown (GitHub-flavored). "
+        "Strict Guidelines:\n"
+        "1. Extract all Marathi Devanagari text exactly as written with correct grammar and spelling.\n"
+        "2. Preserve statutory section numbers, dates, case citations, and government headings.\n"
+        "3. Convert all tables, police registers, and multi-column forms into clean Markdown tables.\n"
+        "4. Convert fill-in-the-blank dotted lines into standardized blanks (________________________).\n"
+        "5. Do NOT include extraneous introductory commentary. Output ONLY the extracted Markdown content."
+    )
+    
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                {
+                    "inline_data": {
+                        "mime_type": "image/png",
+                        "data": img_b64
+                    }
+                }
+            ]
+        }],
+        "generationConfig": {
+            "temperature": 0.1,
+            "maxOutputTokens": 4096
+        }
+    }
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"}
+    )
+    
+    try:
+        res = urllib.request.urlopen(req, timeout=30)
+        data = json.loads(res.read().decode("utf-8"))
+        candidates = data.get("candidates", [])
+        if candidates and "content" in candidates[0]:
+            parts = candidates[0]["content"].get("parts", [])
+            if parts:
+                return parts[0].get("text", "").strip()
+    except Exception as e:
+        safe_print(f"  [WARN] Gemini Vision API call failed: {e}. Falling back to Local Vision OCR.")
+        
+    return ""
+
+
+def convert_pdf_to_markdown(
+    pdf_path: str,
+    output_dir: str,
+    completed_dir: str = None,
+    dpi: int = 200,
+    ocr_workers: int = 6,
+    engine_mode: str = "smart_hybrid",
+    api_key: str = None
+) -> dict:
+    """
+    Unified Smart Hybrid PDF Conversion Engine:
+    - Lane A: Digital Vector Stream (PyMuPDF) for text-rich pages
+    - Lane B: Cloud Gemini Vision AI for complex scans / forms (if api_key provided & mode in ['smart_hybrid', 'cloud_ai'])
+    - Lane C: Local OpenCV CLAHE + Tesseract 5.5 OCR for air-gapped offline scans
+    """
     start_time = time.time()
     filename = os.path.basename(pdf_path)
     base_name, _ = os.path.splitext(filename)
@@ -515,6 +593,7 @@ def convert_pdf_to_markdown(pdf_path: str, output_dir: str, completed_dir: str =
         "filename": filename,
         "output_path": out_md_path,
         "type": "PDF",
+        "engine": "Smart Hybrid (Multi-Lane)",
         "pages": 0,
         "success": False,
         "elapsed_sec": 0,
@@ -522,42 +601,62 @@ def convert_pdf_to_markdown(pdf_path: str, output_dir: str, completed_dir: str =
     }
     
     try:
-        doc = pymupdf.open(pdf_path)
-        total_pages = doc.page_count
+        doc = fitz.open(pdf_path)
+        total_pages = len(doc)
         result["pages"] = total_pages
-        meta = doc.metadata or {}
-        doc_title = meta.get("title") or base_name
+        doc_title = extract_act_metadata_title(doc, filename)
         
-        sample_lens = []
-        has_corrupt_font = False
-        for i in range(min(5, total_pages)):
-            t = doc[i].get_text().strip()
-            sample_lens.append(len(t))
-            if is_legacy_or_cctns_font_text(t):
-                has_corrupt_font = True
+        # Classify document pages into lanes
+        digital_pages = {}
+        image_pages = {}
+        
+        for pno in range(total_pages):
+            page = doc[pno]
+            text = page.get_text("text").strip()
+            # If text has significant length and Devanagari/English characters, use Lane A (Vector Stream)
+            if len(text) > 120 and (contains_devanagari(text) or len(text.split()) > 25):
+                digital_pages[pno] = text
+            else:
+                image_pages[pno] = page
+                
+        page_results = {}
+        for pno, text in digital_pages.items():
+            page_results[pno] = text
+            
+        # Process image / scanned pages through Lane B (Cloud AI) or Lane C (Local OCR)
+        if image_pages:
+            use_cloud_ai = (engine_mode in ["smart_hybrid", "cloud_ai"]) and bool(api_key)
+            result["engine"] = "Smart Hybrid (Cloud AI + MarkItDown)" if use_cloud_ai else "Smart Hybrid (Local OpenCV + Tesseract)"
+            
+            def process_single_image_page(item):
+                pno, page = item
+                pix = page.get_pixmap(dpi=dpi)
+                pil_img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                
+                # Lane B: Cloud Gemini Vision AI
+                if use_cloud_ai:
+                    ai_text = ocr_page_image_with_gemini_vision(pil_img, api_key)
+                    if ai_text:
+                        return pno, ai_text
+                        
+                # Lane C: Local OpenCV CLAHE + Tesseract 5.5 OCR
+                processed_img = preprocess_image_for_ocr(pil_img)
+                ocr_text = ocr_page_image(processed_img, lang="mar+eng")
+                return pno, ocr_text
+
+            max_threads = min(ocr_workers, len(image_pages))
+            with ThreadPoolExecutor(max_workers=max_threads) as executor:
+                futures = {executor.submit(process_single_image_page, item): item[0] for item in image_pages.items()}
+                for future in as_completed(futures):
+                    pno, content = future.result()
+                    page_results[pno] = content
+                    
         doc.close()
         
-        avg_text_len = sum(sample_lens) / max(1, len(sample_lens))
-        is_scanned = (avg_text_len < 50) or has_corrupt_font
-        
-        page_results = {}
-        
-        if is_scanned and total_pages > 3:
-            with ThreadPoolExecutor(max_workers=min(ocr_workers, total_pages)) as pool:
-                futures = [pool.submit(process_page_worker, pdf_path, pno) for pno in range(total_pages)]
-                for fut in as_completed(futures):
-                    pno, content = fut.result()
-                    page_results[pno] = content
-        else:
-            doc = pymupdf.open(pdf_path)
-            for pno in range(total_pages):
-                _, content = process_page_worker(pdf_path, pno)
-                page_results[pno] = content
-            doc.close()
-            
+        # Build structured Markdown
         md_sections = []
         md_sections.append(f"# {doc_title}\n")
-        md_sections.append(f"> **Source File**: `{filename}`  \n> **Total Pages**: {total_pages}  \n> **Extraction Date**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n---\n")
+        md_sections.append(f"> **Source File**: `{filename}`  \n> **Engine**: {result['engine']}  \n> **Total Pages**: {total_pages}  \n> **Extraction Date**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n---\n")
         
         for pno in range(total_pages):
             ptext = page_results.get(pno, "").strip()
