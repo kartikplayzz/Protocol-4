@@ -22,6 +22,18 @@ PYTHON_SCRIPT = r"E:\python\process_pdf_to_md.py"
 
 PORT = 8080
 
+ENGINE_MODE = "smart_hybrid"  # "smart_hybrid", "local_offline", "cloud_ai"
+AI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+
+
+def safe_int_workers(val, default=6):
+    try:
+        if isinstance(val, str) and "gpu" in val.lower():
+            return 8 if "8" in val else 6
+        return int(val)
+    except Exception:
+        return default
+
 class PipelineManager:
     def __init__(self):
         self.lock = threading.Lock()
@@ -73,8 +85,13 @@ class PipelineManager:
             self.state = 'running'
             self.start_time = time.time()
             self.elapsed_sec = 0.0
-            self.configured_workers = int(workers)
-            self.active_workers = int(workers)
+            
+            clean_workers = safe_int_workers(workers, 6)
+            self.configured_workers = clean_workers
+            self.active_workers = clean_workers
+            self.gpu_active = bool(gpu) or (isinstance(workers, str) and "gpu" in str(workers).lower())
+            self.current_mode = mode or "smart_hybrid"
+            self.current_api_key = api_key or ""
             self.progress_percent = 0
             self.milestone_step = 1
 
@@ -91,14 +108,15 @@ class PipelineManager:
             self.state = 'running'
             self.start_time = time.time()
             self.elapsed_sec = 0.0
-            self.configured_workers = int(workers)
-            self.active_workers = int(workers)
-            self.progress_percent = 20
-            self.milestone_step = 2
-            self.total_files = 1
-            self.current_index = 1
-            self.current_file = filename
-            self.current_task = f"Extracting targeted file: {filename}..."
+            
+            clean_workers = safe_int_workers(workers, 6)
+            self.configured_workers = clean_workers
+            self.active_workers = clean_workers
+            self.gpu_active = bool(gpu) or (isinstance(workers, str) and "gpu" in str(workers).lower())
+            self.current_mode = mode or "smart_hybrid"
+            self.current_api_key = api_key or ""
+            self.progress_percent = 0
+            self.milestone_step = 1
 
         self.worker_thread = threading.Thread(target=self._run_single_worker, args=(filename,), daemon=True)
         self.worker_thread.start()
@@ -457,32 +475,44 @@ class LegalStudioHandler(SimpleHTTPRequestHandler):
             return
 
         if parsed.path == '/api/pipeline/start':
-            length = int(self.headers.get('Content-Length', 0))
-            payload = json.loads(self.rfile.read(length).decode('utf-8')) if length > 0 else {}
-            workers = payload.get('workers', 6)
-            gpu = payload.get('gpu', False)
-            mode = payload.get('mode', ENGINE_MODE)
-            api_key = payload.get('api_key', AI_API_KEY)
-            resp = GLOBAL_PIPELINE.start_batch(workers=workers, gpu=gpu, mode=mode, api_key=api_key)
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json; charset=utf-8')
-            self.end_headers()
-            self.wfile.write(json.dumps(resp).encode('utf-8'))
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                payload = json.loads(self.rfile.read(length).decode('utf-8')) if length > 0 else {}
+                workers = payload.get('workers', 6)
+                gpu = payload.get('gpu', False)
+                mode = payload.get('mode', ENGINE_MODE)
+                api_key = payload.get('api_key', AI_API_KEY)
+                resp = GLOBAL_PIPELINE.start_batch(workers=workers, gpu=gpu, mode=mode, api_key=api_key)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(resp).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode('utf-8'))
             return
 
         if parsed.path == '/api/pipeline/start-single':
-            length = int(self.headers.get('Content-Length', 0))
-            payload = json.loads(self.rfile.read(length).decode('utf-8')) if length > 0 else {}
-            fname = payload.get('file', '')
-            workers = payload.get('workers', 6)
-            gpu = payload.get('gpu', False)
-            mode = payload.get('mode', ENGINE_MODE)
-            api_key = payload.get('api_key', AI_API_KEY)
-            resp = GLOBAL_PIPELINE.start_single(fname, workers=workers, gpu=gpu, mode=mode, api_key=api_key)
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json; charset=utf-8')
-            self.end_headers()
-            self.wfile.write(json.dumps(resp).encode('utf-8'))
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                payload = json.loads(self.rfile.read(length).decode('utf-8')) if length > 0 else {}
+                fname = payload.get('file', '')
+                workers = payload.get('workers', 6)
+                gpu = payload.get('gpu', False)
+                mode = payload.get('mode', ENGINE_MODE)
+                api_key = payload.get('api_key', AI_API_KEY)
+                resp = GLOBAL_PIPELINE.start_single(fname, workers=workers, gpu=gpu, mode=mode, api_key=api_key)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(resp).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode('utf-8'))
             return
 
         if parsed.path == '/api/pipeline/pause':
