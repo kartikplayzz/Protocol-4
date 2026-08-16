@@ -1711,8 +1711,89 @@ function updateCliCommand() {
   window.lastGeneratedCliCommand = rawCmd;
 }
 
+function applyCliPreset(preset) {
+  // Update active chip UI
+  document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
+  if (event && event.target) event.target.classList.add('active');
+
+  const modeBatch = document.getElementById('cliModeBatch');
+  const modeSingle = document.getElementById('cliModeSingle');
+  const inputEl = document.getElementById('cliInputDir');
+  const outputEl = document.getElementById('cliOutputDir');
+  const archiveEl = document.getElementById('cliArchiveDir');
+  const workersEl = document.getElementById('cliWorkers');
+  const autoMoveEl = document.getElementById('cliAutoMove');
+
+  if (preset === 'batch_standard') {
+    if (modeBatch) modeBatch.checked = true;
+    if (inputEl) inputEl.value = 'E:\\PDF';
+    if (outputEl) outputEl.value = 'E:\\PDF to MD';
+    if (archiveEl) archiveEl.value = 'E:\\Completed PDF file Extraction';
+    if (workersEl) workersEl.value = '6';
+    if (autoMoveEl) autoMoveEl.checked = true;
+    updateCliCommand();
+  } else if (preset === 'single_doc') {
+    if (modeSingle) modeSingle.checked = true;
+    if (outputEl) outputEl.value = 'E:\\PDF to MD';
+    if (archiveEl) archiveEl.value = 'E:\\Completed PDF file Extraction';
+    if (autoMoveEl) autoMoveEl.checked = true;
+    updateCliCommand();
+  } else if (preset === 'no_move') {
+    if (modeSingle) modeSingle.checked = true;
+    if (outputEl) outputEl.value = 'E:\\PDF to MD';
+    if (autoMoveEl) autoMoveEl.checked = false;
+    updateCliCommand();
+  } else if (preset === 'docx_mode') {
+    if (modeSingle) modeSingle.checked = true;
+    const rawCmd = 'python "E:\\python\\process_pdf_to_md.py" "E:\\PDF\\police_form.docx" --output "E:\\PDF to MD"';
+    const htmlCmd = '<span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\\python\\process_pdf_to_md.py"</span> <span class="cmd-token-val">"E:\\PDF\\police_form.docx"</span> <span class="cmd-token-flag">--output</span> <span class="cmd-token-val">"E:\\PDF to MD"</span>';
+    const container = document.getElementById('generatedCmdContainer');
+    if (container) container.innerHTML = htmlCmd;
+    window.lastGeneratedCliCommand = rawCmd;
+  } else if (preset === 'turbo_workers') {
+    if (modeBatch) modeBatch.checked = true;
+    if (workersEl) workersEl.value = '8';
+    updateCliCommand();
+  } else if (preset === 'start_server') {
+    const rawCmd = 'python "E:\\python\\server.py"';
+    const htmlCmd = '<span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\\python\\server.py"</span>';
+    const container = document.getElementById('generatedCmdContainer');
+    if (container) container.innerHTML = htmlCmd;
+    window.lastGeneratedCliCommand = rawCmd;
+  } else if (preset === 'bootstrap_env') {
+    const rawCmd = 'python "E:\\python\\bootstrap_environment.py"';
+    const htmlCmd = '<span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\\python\\bootstrap_environment.py"</span>';
+    const container = document.getElementById('generatedCmdContainer');
+    if (container) container.innerHTML = htmlCmd;
+    window.lastGeneratedCliCommand = rawCmd;
+  }
+}
+
+async function copyExactCliText(text, btnElement) {
+  try {
+    await navigator.clipboard.writeText(text);
+    if (btnElement) {
+      const origHtml = btnElement.innerHTML;
+      btnElement.innerHTML = '<i data-lucide="check"></i> Copied!';
+      btnElement.style.background = 'rgba(16, 185, 129, 0.15)';
+      btnElement.style.color = '#10b981';
+      btnElement.style.borderColor = '#10b981';
+      setTimeout(() => {
+        btnElement.innerHTML = origHtml;
+        btnElement.style.background = '';
+        btnElement.style.color = '';
+        btnElement.style.borderColor = '';
+        lucide.createIcons();
+      }, 2000);
+    }
+    showToast("Command Copied", "PowerShell instruction copied to clipboard.", "success");
+  } catch (e) {
+    showToast("Copy Failed", "Please copy manually.", "warning");
+  }
+  lucide.createIcons();
+}
+
 async function copyCliCommand() {
-  updateCliCommand();
   const cmdToCopy = window.lastGeneratedCliCommand || 'python "E:\\python\\process_pdf_to_md.py" --batch';
 
   try {
