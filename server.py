@@ -804,9 +804,13 @@ class LegalStudioHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps({'path': test_path, 'exists': exists, 'is_directory': is_dir}).encode('utf-8'))
 
+class ThreadedServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
 def run_server():
     server_address = ('0.0.0.0', PORT)
-    httpd = ThreadingHTTPServer(server_address, LegalStudioHandler)
+    httpd = ThreadedServer(server_address, LegalStudioHandler)
     print(f'[INFO] Live Legal Studio Server running on http://0.0.0.0:{PORT} (Multi-Threaded Persistent Pipeline)')
     print(f'[INFO] Local: http://localhost:{PORT}')
     print(f'[INFO] Network (2nd PC): http://192.168.1.4:{PORT}')
