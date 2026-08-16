@@ -879,22 +879,47 @@
               </div>
             </div>
 
-            <!-- Terminal Generated Output -->
-            <div class="stitch-terminal-card">
-              <div class="terminal-top">
-                <span class="term-name">PowerShell Command Generator</span>
-                <button class="stitch-btn-primary btn-sm" onclick="copyCliCommand()">
-                  <i data-lucide="copy"></i> <span id="copyBtnText">Copy Command</span>
-                </button>
+            <!-- Magic UI CLI Studio Terminal Card -->
+            <div class="magic-terminal-window cli-magic-window">
+              <div class="magic-terminal-header">
+                <div class="magic-terminal-dots">
+                  <span class="m-dot m-dot-red"></span>
+                  <span class="m-dot m-dot-yellow"></span>
+                  <span class="m-dot m-dot-green"></span>
+                </div>
+                <div class="magic-terminal-title">
+                  <i data-lucide="terminal" class="term-icon"></i>
+                  <span class="term-user">PowerShell Command Generator</span>
+                  <span class="term-sep">&bull;</span>
+                  <span class="term-path">pwsh 7.4</span>
+                </div>
+                <div class="magic-terminal-actions">
+                  <button class="m-term-btn" id="cliCopyBtn" onclick="copyCliCommand()" title="Copy Generated PowerShell Command">
+                    <i data-lucide="copy" id="cliCopyIcon"></i> <span id="copyBtnText">Copy Command</span>
+                  </button>
+                </div>
               </div>
-              <div class="terminal-log-scroll">
-                <div class="term-cmd-line">PS C:\&gt; <span class="cmd-highlight" id="generatedCmd">python "E:\python\process_pdf_to_md.py" --batch</span></div>
-                <div class="term-help-text">
-                  <p>[INFO] Initializing High-Performance Hybrid OCR Engine...</p>
-                  <p>[INFO] Language Models Active: mar (Marathi) + eng (English)</p>
-                  <p>[INFO] Parallel Workers: 6 CPU Threads</p>
-                  <p class="text-blue">============================================================</p>
-                  <p>Ready to process incoming .pdf and .docx documents in E:\PDF\</p>
+
+              <!-- CLI Terminal Body -->
+              <div class="magic-terminal-body cli-term-body">
+                <div class="magic-terminal-scanlines"></div>
+                <div class="magic-terminal-glow"></div>
+
+                <div class="cli-cmd-display-box">
+                  <div class="cli-cmd-prompt-prefix">
+                    <span class="ps-prompt-user">PS C:\&gt;</span>
+                  </div>
+                  <div class="cli-cmd-code-text" id="generatedCmdContainer">
+                    <span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\python\process_pdf_to_md.py"</span> <span class="cmd-token-flag">--batch</span> <span class="cmd-token-flag">--input</span> <span class="cmd-token-val">"E:\PDF"</span> <span class="cmd-token-flag">--output</span> <span class="cmd-token-val">"E:\PDF to MD"</span> <span class="cmd-token-flag">--workers</span> <span class="cmd-token-num">6</span> <span class="cmd-token-flag">--completed-dir</span> <span class="cmd-token-val">"E:\Completed PDF file Extraction"</span>
+                  </div>
+                </div>
+
+                <div class="cli-terminal-log-preview">
+                  <div class="cli-preview-line"><span class="l-tag tag-info">INFO</span> Initializing High-Performance Hybrid OCR Engine...</div>
+                  <div class="cli-preview-line"><span class="l-tag tag-success">READY</span> Language Models Active: <code>mar (Marathi)</code> + <code>eng (English)</code></div>
+                  <div class="cli-preview-line"><span class="l-tag tag-hardware">GPU</span> Silent Hardware Auto-Detector: Multi-Core / OpenCL Matrix</div>
+                  <div class="cli-preview-divider">============================================================</div>
+                  <div class="cli-preview-line text-blue">Ready to process incoming .pdf and .docx documents strictly in E:\PDF\</div>
                 </div>
               </div>
             </div>
