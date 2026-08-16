@@ -470,8 +470,107 @@ async function initiateExtractionProtocol() {
 }
 
 // ==========================================================================
-// PERSISTENT PIPELINE STATE & LIVE STREAM ENGINE
+// MAGIC UI TERMINAL LOGGING & PERSISTENT STREAM ENGINE
 // ==========================================================================
+
+let autoScrollEnabled = true;
+let terminalLogCounter = 0;
+
+function toggleAutoScroll() {
+  autoScrollEnabled = !autoScrollEnabled;
+  const label = document.getElementById('autoScrollLabel');
+  const btn = document.getElementById('btnAutoScroll');
+  if (label) label.innerText = `Auto-Scroll: ${autoScrollEnabled ? 'ON' : 'OFF'}`;
+  if (btn) {
+    if (autoScrollEnabled) btn.classList.add('active');
+    else btn.classList.remove('active');
+  }
+}
+
+function clearTerminalLogs() {
+  const container = document.getElementById('terminalLogsContainer');
+  if (container) {
+    container.innerHTML = `
+      <div class="log-line info">
+        <span class="l-idx">#001</span>
+        <span class="l-time">${new Date().toLocaleTimeString()}</span>
+        <span class="l-tag tag-info">READY</span>
+        <span class="l-msg">Terminal buffer cleared. Listening to extraction protocol...</span>
+      </div>
+    `;
+    terminalLogCounter = 1;
+  }
+  showToast("Terminal Cleared", "Log stream reset.", "info");
+}
+
+async function copyTerminalLogs() {
+  const container = document.getElementById('terminalLogsContainer');
+  if (!container) return;
+  try {
+    await navigator.clipboard.writeText(container.innerText);
+    const label = document.getElementById('labelCopyTerm');
+    if (label) label.innerText = 'Copied! ✓';
+    setTimeout(() => { if (label) label.innerText = 'Copy'; }, 2000);
+    showToast("Terminal Logs Copied", "Full extraction log stream copied to clipboard.", "success");
+  } catch (e) {
+    showToast("Copy Notice", "Could not copy logs automatically.", "warning");
+  }
+}
+
+function toggleTerminalFullscreen() {
+  const term = document.getElementById('magicTerminal');
+  const icon = document.getElementById('iconFullscreen');
+  if (!term) return;
+  term.classList.toggle('magic-terminal-fullscreen');
+  if (term.classList.contains('magic-terminal-fullscreen')) {
+    if (icon) icon.setAttribute('data-lucide', 'minimize-2');
+  } else {
+    if (icon) icon.setAttribute('data-lucide', 'maximize-2');
+  }
+  lucide.createIcons();
+}
+
+function renderServerTerminalLog(entry) {
+  const container = document.getElementById('terminalLogsContainer');
+  if (!container) return;
+
+  terminalLogCounter++;
+  const idxStr = '#' + String(terminalLogCounter).padStart(3, '0');
+
+  const row = document.createElement('div');
+  const logType = entry.type || 'info';
+  row.className = `log-line ${logType}`;
+
+  let tagClass = 'tag-info';
+  const tagUpper = (entry.tag || 'INFO').toUpperCase();
+  if (tagUpper === 'SUCCESS' || tagUpper === 'CONVERTED' || tagUpper === 'COMPLETE') tagClass = 'tag-success';
+  else if (tagUpper === 'WARN' || tagUpper === 'CANCEL') tagClass = 'tag-warn';
+  else if (tagUpper === 'ERROR' || tagUpper === 'FAILED') tagClass = 'tag-error';
+  else if (tagUpper === 'HARDWARE' || tagUpper === 'GPU' || tagUpper === 'OCR') tagClass = 'tag-hardware';
+  else if (tagUpper === 'PROTOCOL' || tagUpper === 'INGEST' || tagUpper === 'PROGRESS') tagClass = 'tag-protocol';
+
+  row.innerHTML = `
+    <span class="l-idx">${idxStr}</span>
+    <span class="l-time">${entry.time || new Date().toLocaleTimeString()}</span>
+    <span class="l-tag ${tagClass}">${entry.tag || 'INFO'}</span>
+    <span class="l-msg">${entry.msg || ''}</span>
+  `;
+
+  container.appendChild(row);
+
+  if (autoScrollEnabled) {
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+function addTerminalLog(tag, msg, type = 'info') {
+  renderServerTerminalLog({
+    time: `[${new Date().toLocaleTimeString()}]`,
+    tag: tag,
+    msg: msg,
+    type: type
+  });
+}
 
 let knownLogIndex = 0;
 
@@ -1711,89 +1810,8 @@ function updateCliCommand() {
   window.lastGeneratedCliCommand = rawCmd;
 }
 
-function applyCliPreset(preset) {
-  // Update active chip UI
-  document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
-  if (event && event.target) event.target.classList.add('active');
-
-  const modeBatch = document.getElementById('cliModeBatch');
-  const modeSingle = document.getElementById('cliModeSingle');
-  const inputEl = document.getElementById('cliInputDir');
-  const outputEl = document.getElementById('cliOutputDir');
-  const archiveEl = document.getElementById('cliArchiveDir');
-  const workersEl = document.getElementById('cliWorkers');
-  const autoMoveEl = document.getElementById('cliAutoMove');
-
-  if (preset === 'batch_standard') {
-    if (modeBatch) modeBatch.checked = true;
-    if (inputEl) inputEl.value = 'E:\\PDF';
-    if (outputEl) outputEl.value = 'E:\\PDF to MD';
-    if (archiveEl) archiveEl.value = 'E:\\Completed PDF file Extraction';
-    if (workersEl) workersEl.value = '6';
-    if (autoMoveEl) autoMoveEl.checked = true;
-    updateCliCommand();
-  } else if (preset === 'single_doc') {
-    if (modeSingle) modeSingle.checked = true;
-    if (outputEl) outputEl.value = 'E:\\PDF to MD';
-    if (archiveEl) archiveEl.value = 'E:\\Completed PDF file Extraction';
-    if (autoMoveEl) autoMoveEl.checked = true;
-    updateCliCommand();
-  } else if (preset === 'no_move') {
-    if (modeSingle) modeSingle.checked = true;
-    if (outputEl) outputEl.value = 'E:\\PDF to MD';
-    if (autoMoveEl) autoMoveEl.checked = false;
-    updateCliCommand();
-  } else if (preset === 'docx_mode') {
-    if (modeSingle) modeSingle.checked = true;
-    const rawCmd = 'python "E:\\python\\process_pdf_to_md.py" "E:\\PDF\\police_form.docx" --output "E:\\PDF to MD"';
-    const htmlCmd = '<span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\\python\\process_pdf_to_md.py"</span> <span class="cmd-token-val">"E:\\PDF\\police_form.docx"</span> <span class="cmd-token-flag">--output</span> <span class="cmd-token-val">"E:\\PDF to MD"</span>';
-    const container = document.getElementById('generatedCmdContainer');
-    if (container) container.innerHTML = htmlCmd;
-    window.lastGeneratedCliCommand = rawCmd;
-  } else if (preset === 'turbo_workers') {
-    if (modeBatch) modeBatch.checked = true;
-    if (workersEl) workersEl.value = '8';
-    updateCliCommand();
-  } else if (preset === 'start_server') {
-    const rawCmd = 'python "E:\\python\\server.py"';
-    const htmlCmd = '<span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\\python\\server.py"</span>';
-    const container = document.getElementById('generatedCmdContainer');
-    if (container) container.innerHTML = htmlCmd;
-    window.lastGeneratedCliCommand = rawCmd;
-  } else if (preset === 'bootstrap_env') {
-    const rawCmd = 'python "E:\\python\\bootstrap_environment.py"';
-    const htmlCmd = '<span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\\python\\bootstrap_environment.py"</span>';
-    const container = document.getElementById('generatedCmdContainer');
-    if (container) container.innerHTML = htmlCmd;
-    window.lastGeneratedCliCommand = rawCmd;
-  }
-}
-
-async function copyExactCliText(text, btnElement) {
-  try {
-    await navigator.clipboard.writeText(text);
-    if (btnElement) {
-      const origHtml = btnElement.innerHTML;
-      btnElement.innerHTML = '<i data-lucide="check"></i> Copied!';
-      btnElement.style.background = 'rgba(16, 185, 129, 0.15)';
-      btnElement.style.color = '#10b981';
-      btnElement.style.borderColor = '#10b981';
-      setTimeout(() => {
-        btnElement.innerHTML = origHtml;
-        btnElement.style.background = '';
-        btnElement.style.color = '';
-        btnElement.style.borderColor = '';
-        lucide.createIcons();
-      }, 2000);
-    }
-    showToast("Command Copied", "PowerShell instruction copied to clipboard.", "success");
-  } catch (e) {
-    showToast("Copy Failed", "Please copy manually.", "warning");
-  }
-  lucide.createIcons();
-}
-
 async function copyCliCommand() {
+  updateCliCommand();
   const cmdToCopy = window.lastGeneratedCliCommand || 'python "E:\\python\\process_pdf_to_md.py" --batch';
 
   try {
