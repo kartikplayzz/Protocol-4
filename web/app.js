@@ -624,6 +624,53 @@ async function pollPersistentPipelineState() {
 
 let selectedWorkerCount = 6;
 let isGpuAccelerated = false;
+let currentEngineMode = localStorage.getItem('protocol4_engine_mode') || 'smart_hybrid';
+
+function onEngineModeChange(mode) {
+  currentEngineMode = mode;
+  localStorage.setItem('protocol4_engine_mode', mode);
+  
+  let label = "🤖 Smart Hybrid (Auto-Route)";
+  if (mode === 'local_offline') label = "💻 Local Offline (MarkItDown + Tesseract)";
+  if (mode === 'cloud_ai') label = "🚀 Cloud AI Vision (Gemini Flash)";
+  
+  showToast("Workflow Mode", `Active Engine: ${label}`, "info");
+  addTerminalLog("WORKFLOW", `Engine workflow mode switched to: ${label}`, "info");
+}
+
+function openAiKeyModal() {
+  const modal = document.getElementById('aiKeyConfigModal');
+  const input = document.getElementById('geminiApiKeyInput');
+  const storedKey = localStorage.getItem('protocol4_gemini_key') || '';
+  if (input) input.value = storedKey;
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeAiKeyModal() {
+  const modal = document.getElementById('aiKeyConfigModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function saveAiKey() {
+  const input = document.getElementById('geminiApiKeyInput');
+  const key = input ? input.value.trim() : '';
+  if (key) {
+    localStorage.setItem('protocol4_gemini_key', key);
+    showToast("AI Key Saved", "Gemini Vision API Key configured for Lane B.", "success");
+    addTerminalLog("CONFIG", "Cloud AI Vision API Key updated.", "success");
+  } else {
+    localStorage.removeItem('protocol4_gemini_key');
+    showToast("Local Mode", "API key cleared. System will use 100% local OCR.", "info");
+  }
+  closeAiKeyModal();
+}
+
+function clearAiKey() {
+  localStorage.removeItem('protocol4_gemini_key');
+  const input = document.getElementById('geminiApiKeyInput');
+  if (input) input.value = '';
+  showToast("Key Cleared", "Gemini API Key removed. Local engine active.", "info");
+}
 
 function onWorkerCountChange(val) {
   if (typeof val === 'string' && val.startsWith('gpu')) {
@@ -670,16 +717,22 @@ function renderServerTerminalLog(entry) {
 // Execute Real Sequential Multi-File Extraction via API (Persistent Backend Runner)
 async function executeRealSequentialMultiBatch() {
   scrollToSection('pipeline-runner');
+  const storedApiKey = localStorage.getItem('protocol4_gemini_key') || '';
   try {
     const res = await fetch('/api/pipeline/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ workers: selectedWorkerCount, gpu: isGpuAccelerated })
+      body: JSON.stringify({
+        workers: selectedWorkerCount,
+        gpu: isGpuAccelerated,
+        mode: currentEngineMode,
+        api_key: storedApiKey
+      })
     });
     const data = await res.json();
     if (data.success) {
       const modeText = isGpuAccelerated ? `GPU Accelerated (${selectedWorkerCount} threads)` : `${selectedWorkerCount} CPU workers`;
-      showToast("Pipeline Started", `Sequential extraction running with ${modeText}.`, "success");
+      showToast("Pipeline Started", `Sequential extraction running with ${modeText} [${currentEngineMode}].`, "success");
     } else {
       showToast("Notice", data.error || "Pipeline is already active.", "info");
     }
@@ -698,16 +751,23 @@ async function runSingleTargetedFileExtraction(filename) {
   }
 
   scrollToSection('pipeline-runner');
+  const storedApiKey = localStorage.getItem('protocol4_gemini_key') || '';
   try {
     const res = await fetch('/api/pipeline/start-single', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: targetFile, workers: selectedWorkerCount, gpu: isGpuAccelerated })
+      body: JSON.stringify({
+        file: targetFile,
+        workers: selectedWorkerCount,
+        gpu: isGpuAccelerated,
+        mode: currentEngineMode,
+        api_key: storedApiKey
+      })
     });
     const data = await res.json();
     if (data.success) {
       const modeText = isGpuAccelerated ? `🚀 GPU Turbo (${selectedWorkerCount} threads)` : `${selectedWorkerCount} CPU threads`;
-      showToast("Extracting File", `Targeted extraction started for '${targetFile}' (${modeText}).`, "success");
+      showToast("Extracting File", `Targeted extraction started for '${targetFile}' (${modeText} [${currentEngineMode}]).`, "success");
     } else {
       showToast("Notice", data.error || "Extraction already active.", "info");
     }
