@@ -1690,11 +1690,11 @@ async function runAutoInstallDependencies() {
       showToast("Setup Notice", data.message || "Please ensure internet access is active.", "warning");
       if (btn) {
         btn.disabled = false;
-        btn.innerHTML = '<i data-lucide="refresh-cw"></i> <span>Retry Installation</span>';
+        btn.innerHTML = '<i data-lucide="download"></i> <span>Retry Installation</span>';
       }
     }
   } catch (e) {
-    showToast("Network Error", "Could not trigger auto-installer.", "error");
+    showToast("Installation Error", "Could not trigger auto-installer.", "error");
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = '<i data-lucide="refresh-cw"></i> <span>Retry Installation</span>';
@@ -1702,5 +1702,66 @@ async function runAutoInstallDependencies() {
   }
 }
 
+// ==========================================================================
+// INTERACTIVE CLI COMMAND BUILDER
+// ==========================================================================
 
+function updateCliCommand() {
+  const isBatch = document.getElementById('cliModeBatch')?.checked ?? true;
+  const inputDir = document.getElementById('cliInputDir')?.value.trim() || 'E:\\PDF';
+  const outputDir = document.getElementById('cliOutputDir')?.value.trim() || 'E:\\PDF to MD';
+  const archiveDir = document.getElementById('cliArchiveDir')?.value.trim() || 'E:\\Completed PDF file Extraction';
+  const workers = document.getElementById('cliWorkers')?.value || '6';
+  const autoMove = document.getElementById('cliAutoMove')?.checked ?? true;
 
+  let rawCmd = '';
+  let htmlCmd = '';
+
+  if (isBatch) {
+    rawCmd = `python "E:\\python\\process_pdf_to_md.py" --batch --input "${inputDir}" --output "${outputDir}" --workers ${workers}`;
+    htmlCmd = `<span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\\python\\process_pdf_to_md.py"</span> <span class="cmd-token-flag">--batch</span> <span class="cmd-token-flag">--input</span> <span class="cmd-token-val">"${inputDir}"</span> <span class="cmd-token-flag">--output</span> <span class="cmd-token-val">"${outputDir}"</span> <span class="cmd-token-flag">--workers</span> <span class="cmd-token-num">${workers}</span>`;
+    
+    if (autoMove && archiveDir) {
+      rawCmd += ` --completed-dir "${archiveDir}"`;
+      htmlCmd += ` <span class="cmd-token-flag">--completed-dir</span> <span class="cmd-token-val">"${archiveDir}"</span>`;
+    }
+  } else {
+    rawCmd = `python "E:\\python\\process_pdf_to_md.py" "E:\\PDF\\sample.pdf" --output "${outputDir}"`;
+    htmlCmd = `<span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\\python\\process_pdf_to_md.py"</span> <span class="cmd-token-val">"E:\\PDF\\sample.pdf"</span> <span class="cmd-token-flag">--output</span> <span class="cmd-token-val">"${outputDir}"</span>`;
+    if (autoMove && archiveDir) {
+      rawCmd += ` --completed-dir "${archiveDir}"`;
+      htmlCmd += ` <span class="cmd-token-flag">--completed-dir</span> <span class="cmd-token-val">"${archiveDir}"</span>`;
+    }
+  }
+
+  const container = document.getElementById('generatedCmdContainer');
+  if (container) container.innerHTML = htmlCmd;
+  window.lastGeneratedCliCommand = rawCmd;
+}
+
+async function copyCliCommand() {
+  updateCliCommand();
+  const cmdToCopy = window.lastGeneratedCliCommand || 'python "E:\\python\\process_pdf_to_md.py" --batch';
+
+  try {
+    await navigator.clipboard.writeText(cmdToCopy);
+    const btnText = document.getElementById('copyBtnText');
+    const copyBtn = document.getElementById('cliCopyBtn');
+    if (btnText) btnText.innerText = 'Copied! ✓';
+    if (copyBtn) copyBtn.classList.add('active');
+    setTimeout(() => {
+      if (btnText) btnText.innerText = 'Copy Command';
+      if (copyBtn) copyBtn.classList.remove('active');
+    }, 2000);
+    showToast("Command Copied", "PowerShell CLI command copied to clipboard.", "success");
+  } catch (e) {
+    showToast("Copy Failed", "Please select and copy manually.", "warning");
+  }
+}
+
+// Initial binding
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => { updateCliCommand(); });
+} else {
+  updateCliCommand();
+}
