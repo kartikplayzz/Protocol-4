@@ -26,7 +26,9 @@ if sys.stderr and hasattr(sys.stderr, 'reconfigure'):
     except Exception:
         pass
 
-import pymupdf  # PyMuPDF
+import pymupdf
+import pymupdf as fitz
+fitz = pymupdf
 import PyPDF2
 import pytesseract
 from PIL import Image
@@ -567,6 +569,33 @@ def ocr_page_image_with_gemini_vision(pil_img: Image.Image, api_key: str) -> str
     return ""
 
 
+def contains_devanagari(text: str) -> bool:
+    """Returns True if string contains Devanagari Unicode characters (U+0900 to U+097F)."""
+    return any('\u0900' <= char <= '\u097F' for char in text)
+
+
+def extract_act_metadata_title(doc, filename: str) -> str:
+    """Extracts a clean document title from PDF metadata or first page text or filename."""
+    base_name, _ = os.path.splitext(filename)
+    try:
+        meta_title = doc.metadata.get("title", "").strip()
+        if meta_title and len(meta_title) > 3 and not meta_title.lower().endswith(".pdf"):
+            return meta_title
+    except Exception:
+        pass
+        
+    try:
+        first_page_text = doc[0].get_text("text").strip().splitlines()
+        for line in first_page_text[:10]:
+            clean_l = line.strip()
+            if len(clean_l) > 5 and not clean_l.startswith("<!--") and not clean_l.isdigit():
+                if any(kw in clean_l.lower() for kw in ["act", "rules", "अधिनियम", "नियम", "महाराष्ट्र", "police", "manual", "order", "अहवाल"]):
+                    return clean_l
+    except Exception:
+        pass
+        
+    return base_name
+
 def convert_pdf_to_markdown(
     pdf_path: str,
     output_dir: str,
@@ -843,3 +872,5 @@ if __name__ == "__main__":
         else:
             res = convert_pdf_to_markdown(args.doc_path, args.output, completed_dir=target_completed)
         safe_print(f"Converted '{res['filename']}' in {res['elapsed_sec']}s. Success: {res['success']}")
+        if not res.get('success'):
+            sys.exit(1)
