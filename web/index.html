@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legal Document &amp; Police FIR Studio | Stitch Enterprise Workspace</title>
+  
+  <!-- SEO & Meta -->
+  <meta name="description" content="Enterprise Extraction Protocol and Studio for automated Marathi &amp; English legal document and police FIR to Markdown engine.">
+  
+  <!-- Google Fonts: Inter & Outfit & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Magic UI Text Highlighter Engine (RoughNotation) -->
+  <script src="rough-notation.iife.js"></script>
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="stitch-app-body">
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Outer Frame / Floating Canvas -->
+  <div class="stitch-frame-container">
+    
+    <!-- =========================================================================
+         STITCH SIDEBAR (White Surface + Active Blue Pill)
+         ========================================================================= -->
+    <aside class="stitch-sidebar" id="appSidebar">
+      
+      <!-- User / Lead Profile Header -->
+      <div class="stitch-user-profile">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar">
+            <i data-lucide="scale"></i>
+          </div>
+          <span class="avatar-status-dot"></span>
+        </div>
+        <div class="profile-info">
+          <h2 class="profile-name">Legal AI Studio</h2>
+          <span class="profile-role">Maharashtra Police Pipeline</span>
+        </div>
+        <button class="sidebar-toggle-btn mobile-only" onclick="toggleSidebar()" title="Close Sidebar">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="stitch-nav">
+        <a href="#dashboard-overview" class="stitch-nav-item active" onclick="setActiveNav(this)">
+          <i data-lucide="layout-grid"></i>
+          <span>Dashboard</span>
+        </a>
+
+        <a href="#pipeline-runner" class="stitch-nav-item" onclick="setActiveNav(this)">
+          <i data-lucide="play-circle"></i>
+          <span>Extraction Protocol</span>
+          <span class="nav-count-badge" id="sideNavQueueBadge">0</span>
+        </a>
+
+        <a href="#upload-section" class="stitch-nav-item" onclick="setActiveNav(this)">
+          <i data-lucide="upload-cloud"></i>
+          <span>Upload Studio</span>
+        </a>
+
+        <a href="#targeted-file-section" class="stitch-nav-item" onclick="setActiveNav(this)">
+          <i data-lucide="crosshair"></i>
+          <span>Targeted File</span>
+        </a>
+
+        <a href="#architecture" class="stitch-nav-item" onclick="setActiveNav(this)">
+          <i data-lucide="git-branch"></i>
+          <span>Mind Map</span>
+        </a>
+
+        <a href="#sop" class="stitch-nav-item" onclick="setActiveNav(this)">
+          <i data-lucide="list-ordered"></i>
+          <span>6-Step SOP</span>
+        </a>
+
+        <a href="#documents" class="stitch-nav-item" onclick="setActiveNav(this)">
+          <i data-lucide="file-text"></i>
+          <span>Documents</span>
+          <span class="nav-count-badge" id="sideNavDocCount">44</span>
+        </a>
+
+        <a href="#cli-builder" class="stitch-nav-item" onclick="setActiveNav(this)">
+          <i data-lucide="terminal"></i>
+          <span>CLI Studio</span>
+        </a>
+
+        <a href="#benchmarks" class="stitch-nav-item" onclick="setActiveNav(this)">
+          <i data-lucide="bar-chart-2"></i>
+          <span>Benchmarks</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar Footer Settings -->
+      <div class="stitch-sidebar-footer">
+        <button class="stitch-footer-btn" onclick="openLocationConfigModal()" title="Location Settings">
+          <i data-lucide="folder-cog"></i>
+          <span>Folder &amp; Location Config</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- =========================================================================
+         STITCH MAIN WORKSPACE (Cloud White Surface)
+         ========================================================================= -->
+    <div class="stitch-main-canvas">
+      
+      <!-- Top Bar: WorkSpace Brand + Actions -->
+      <header class="stitch-top-bar">
+        <div class="top-bar-left">
+          <button class="menu-toggle-btn mobile-only" onclick="toggleSidebar()" title="Toggle Menu">
+            <i data-lucide="menu"></i>
+          </button>
+          <span class="workspace-brand-title">WorkSpace</span>
+        </div>
+
+        <div class="top-bar-right">
+          <!-- Queue Status Pill -->
+          <div class="stitch-status-chip" id="locationStatusChip" title="Ingestion Queue Location">
+            <span class="chip-dot" id="locationStatusDot"></span>
+            <span id="topBarQueueText">Queue: <code>E:\PDF\</code> (0 Pending)</span>
+          </div>
+
+          <!-- Direct Upload Quick Action -->
+          <button class="stitch-btn-secondary btn-sm" onclick="scrollToSection('upload-section')">
+            <i data-lucide="upload"></i> <span>Upload Files</span>
+          </button>
+
+          <!-- Primary Unified Extraction Protocol Action -->
+          <button class="stitch-btn-primary btn-sm" onclick="initiateExtractionProtocol()">
+            <i data-lucide="play"></i> <span>Extraction Protocol</span>
+          </button>
+
+          <!-- Operator Avatar -->
+          <div class="top-avatar-circle" title="Operator Profile">
+            <span>MH</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Scrollable Content Area -->
+      <div class="stitch-content-scroll">
+        
+        <!-- Missing Location Warning Banner (Shown if E:\ is not found) -->
+        <div id="locationWarningBanner" class="location-warning-banner hidden">
+          <div class="lw-icon"><i data-lucide="alert-triangle"></i></div>
+          <div class="lw-content">
+            <h4>Location Notice: Set your location in your file if it is not set.</h4>
+            <p>The default directory <code>E:\PDF\</code> was not located on this device. You can configure your local directory path or upload files directly through the <strong>Upload Studio</strong> below.</p>
+          </div>
+          <button class="stitch-btn-primary btn-sm" onclick="openLocationConfigModal()">Set Location</button>
+        </div>
+
+        <!-- Welcome / Greeting Section -->
+        <section id="dashboard-overview" class="stitch-welcome-section">
+          <div class="welcome-header">
+            <h1 class="welcome-title">Good morning, Operator.</h1>
+            <p class="welcome-subtitle">Here is your legal document &amp; police FIR extraction workspace overview for today.</p>
+          </div>
+
+          <!-- 3-Card Stitch Metric Grid -->
+          <div class="stitch-cards-grid">
+            
+            <!-- Card 1: Active Ingestion & Projects -->
+            <div class="stitch-card">
+              <div class="card-top-row">
+                <h3 class="card-heading">Active Queue &amp; Corpus</h3>
+                <div class="card-icon-wrap blue">
+                  <i data-lucide="folder"></i>
+                </div>
+              </div>
+              <div class="card-big-stat" id="kpiQueueCount">0</div>
+              <div class="card-stat-sub">
+                <span class="sub-positive" id="kpiQueueSubtext">0 files in E:\PDF\</span> &bull; 44 Converted in Archive
+              </div>
+              
+              <div class="card-progress-section">
+                <div class="progress-labels">
+                  <span>Batch Conversion Protocol</span>
+                  <strong class="text-blue" id="kpiProgressLabel">Ready</strong>
+                </div>
+                <div class="stitch-progress-bar">
+                  <div class="stitch-progress-fill" id="kpiProgressBar" style="width: 100%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2: Quality & Invariants -->
+            <div class="stitch-card">
+              <div class="card-top-row">
+                <h3 class="card-heading">OCR &amp; Accuracy Invariants</h3>
+                <div class="card-icon-wrap red">
+                  <i data-lucide="alert-circle"></i>
+                </div>
+              </div>
+              <div class="card-big-stat ticker-val" data-target="98.58">98.58%</div>
+              <div class="card-stat-sub">
+                <span class="sub-alert">3 Strict Protocol Invariants</span>
+              </div>
+              
+              <ul class="card-bullet-list">
+                <li><span class="bullet-dot red"></span> Zero-Loss Character Preservation</li>
+                <li><span class="bullet-dot blue"></span> Pure Marathi Devanagari (<code>mar+eng</code>)</li>
+                <li><span class="bullet-dot green"></span> Strict Ingestion Queue Isolation</li>
+              </ul>
+            </div>
+
+            <!-- Card 3: Live Pipeline Stream & Team Activity -->
+            <div class="stitch-card">
+              <div class="card-top-row">
+                <h3 class="card-heading">Engine Activity</h3>
+                <div class="card-icon-wrap blue">
+                  <i data-lucide="cpu"></i>
+                </div>
+              </div>
+              
+              <div class="activity-feed-list">
+                <div class="activity-item">
+                  <div class="activity-avatar blue">
+                    <i data-lucide="file-check"></i>
+                  </div>
+                  <div class="activity-details">
+                    <p id="activityRecentText"><strong>Protocol Ready:</strong> Monitoring <code>E:\PDF\</code> for new files.</p>
+                    <span class="activity-time">Target &rarr; <code>E:\PDF to MD\</code></span>
+                  </div>
+                </div>
+
+                <div class="activity-item">
+                  <div class="activity-avatar gray">
+                    <i data-lucide="archive"></i>
+                  </div>
+                  <div class="activity-details">
+                    <p><strong>Auto-Archive Enabled:</strong> Processed originals move to <code>E:\Completed PDF file Extraction\</code>.</p>
+                    <span class="activity-time">Zero Archive Re-Scanning Protocol</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Section 1: Extraction Protocol & Live Runner -->
+        <section id="pipeline-runner" class="stitch-section">
+          <div class="section-title-bar">
+            <div>
+              <h2 class="section-heading">Extraction Protocol &amp; Live Terminal</h2>
+              <p class="section-desc">Strict execution protocol: Detects queue, converts documents sequentially (one by one), and archives source files.</p>
+            </div>
+            <div class="section-actions" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+              <!-- Parallel Workers Selector -->
+              <div class="worker-select-control">
+                <label for="parallelWorkersSelect" class="worker-select-label">
+                  <i data-lucide="cpu" style="width:14px;height:14px;color:#1d68f2;"></i> Parallel Workers:
+                </label>
+                <select id="parallelWorkersSelect" class="worker-dropdown-select" onchange="onWorkerCountChange(this.value)">
+                  <optgroup label="💻 CPU Multi-Threading">
+                    <option value="4">4 CPU Workers</option>
+                    <option value="6" selected>6 CPU Workers (Recommended)</option>
+                    <option value="8">8 CPU Workers (High Performance)</option>
+                    <option value="12">12 CPU Workers (Multi-Core Max)</option>
+                  </optgroup>
+                  <optgroup label="🚀 GPU Hardware Acceleration">
+                    <option value="gpu-6">🚀 GPU Accelerated (OpenCL + 6 Threads)</option>
+                    <option value="gpu-8">⚡ GPU Turbo (OpenCL + 8 Threads)</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <button class="stitch-btn-primary" id="btnStartPipeline" onclick="initiateExtractionProtocol()">
+                <i data-lucide="play"></i> <span>Run Pipeline</span>
+              </button>
+              <button class="stitch-btn-secondary" id="btnPausePipeline" onclick="pausePipelineExecution()" disabled>
+                <i data-lucide="pause"></i> <span>Pause</span>
+              </button>
+              <button class="stitch-btn-secondary" onclick="resetPipelineExecution()">
+                <i data-lucide="rotate-ccw"></i> <span>Reset</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="stitch-card full-width-card">
+            <!-- Progress Bar & Status -->
+            <div class="pipeline-status-row">
+              <div class="status-indicator-group">
+                <span class="pulse-indicator-stitch" id="runnerPulse"></span>
+                <span class="task-title-text" id="pipelineCurrentTask">Status: Ready for Protocol</span>
+                <span class="stitch-pill-badge" id="pipelineCurrentStep">IDLE</span>
+              </div>
+              <div class="pipeline-quick-metrics">
+                <span><i data-lucide="clock"></i> Elapsed: <strong id="elapsedTimer">00:00.0</strong></span>
+                <span><i data-lucide="cpu"></i> Workers: <strong id="activeWorkers">0 / 6</strong></span>
+                <span><i data-lucide="layers"></i> Progress: <strong id="progressPercent">0%</strong></span>
+              </div>
+            </div>
+
+            <div class="stitch-progress-bar-lg">
+              <div class="stitch-progress-fill-lg" id="masterProgressBar" style="width: 0%;"></div>
+            </div>
+
+            <!-- 6 Visual Pipeline Milestones -->
+            <div class="stitch-milestones-row">
+              <div class="milestone-box" id="mile1">
+                <div class="ms-circle"><i data-lucide="search"></i></div>
+                <span>1. Ingestion (<span class="magic-highlight">E:\PDF\</span>)</span>
+              </div>
+              <div class="milestone-box" id="mile2">
+                <div class="ms-circle"><i data-lucide="sparkles"></i></div>
+                <span>2. <span class="magic-highlight">MarkItDown &amp; DOCX</span></span>
+              </div>
+              <div class="milestone-box" id="mile3">
+                <div class="ms-circle"><i data-lucide="sliders"></i></div>
+                <span>3. 200/300 DPI CLAHE</span>
+              </div>
+              <div class="milestone-box" id="mile4">
+                <div class="ms-circle"><i data-lucide="eye"></i></div>
+                <span>4. OCR (<span class="magic-highlight">mar+eng</span>)</span>
+              </div>
+              <div class="milestone-box" id="mile5">
+                <div class="ms-circle"><i data-lucide="align-left"></i></div>
+                <span>5. Marathi Legal NLP</span>
+              </div>
+              <div class="milestone-box" id="mile6">
+                <div class="ms-circle"><i data-lucide="archive"></i></div>
+                <span>6. Target &amp; Archive</span>
+              </div>
+            </div>
+
+            <!-- Interactive Edge Case Simulations -->
+            <div class="stitch-sim-bar">
+              <span class="sim-title"><i data-lucide="alert-triangle"></i> Protocol Verification Tests:</span>
+              <div class="sim-btns-group">
+                <button class="sim-chip-btn" onclick="simulateScenario('cctns_font')">
+                  <i data-lucide="type"></i> CCTNS Corrupt Font Fallback
+                </button>
+                <button class="sim-chip-btn" onclick="simulateScenario('locked_pdf')">
+                  <i data-lucide="lock"></i> Locked File Retry Pass
+                </button>
+                <button class="sim-chip-btn" onclick="simulateScenario('low_contrast')">
+                  <i data-lucide="sun"></i> Low-DPI CLAHE Auto-Enhancement
+                </button>
+                <button class="sim-chip-btn" onclick="simulateScenario('boilerplate')">
+                  <i data-lucide="filter"></i> Gazette Noise Stripping
+                </button>
+              </div>
+            </div>
+
+            <!-- 600px Height Terminal Output -->
+            <div class="stitch-terminal">
+              <div class="terminal-top">
+                <div class="term-dots">
+                  <span class="dot red"></span>
+                  <span class="dot yellow"></span>
+                  <span class="dot green"></span>
+                  <span class="term-name">Live Pipeline Output Stream &bull; Extraction Protocol</span>
+                </div>
+                <div class="term-btns">
+                  <button class="btn-term-action" onclick="clearTerminalLogs()"><i data-lucide="trash-2"></i> Clear</button>
+                  <button class="btn-term-action" onclick="copyTerminalLogs()"><i data-lucide="copy"></i> Copy</button>
+                </div>
+              </div>
+              <div class="terminal-log-scroll" id="terminalLogsContainer">
+                <div class="log-line info">
+                  <span class="l-time">[12:55:00]</span>
+                  <span class="l-tag tag-info">INFO</span>
+                  <span class="l-msg">Extraction Protocol initialized. Queue bound strictly to 'E:\PDF\'.</span>
+                </div>
+                <div class="log-line info">
+                  <span class="l-time">[12:55:01]</span>
+                  <span class="l-tag tag-info">ENV</span>
+                  <span class="l-msg">Tesseract 5.5 path: C:\Users\Kartikplayzz\AppData\Local\Programs\Tesseract-OCR\tesseract.exe</span>
+                </div>
+                <div class="log-line success">
+                  <span class="l-time">[12:55:01]</span>
+                  <span class="l-tag tag-success">READY</span>
+                  <span class="l-msg">Language models active: mar (Marathi), eng (English), osd. Ready for single/multi file processing.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Direct Upload Studio -->
+        <section id="upload-section" class="stitch-section">
+          <div class="section-title-bar">
+            <div>
+              <h2 class="section-heading">Direct File Upload Studio</h2>
+              <p class="section-desc">Upload multiple legal documents or single targeted files directly into the <code>E:\PDF\</code> queue from any computer.</p>
+            </div>
+          </div>
+
+          <div class="stitch-cards-grid">
+            <div class="stitch-card" style="grid-column: span 2;">
+              <h3 class="card-heading"><i data-lucide="upload-cloud" class="text-blue"></i> Upload to Queue (<code>E:\PDF\</code>)</h3>
+              
+              <!-- Drag and Drop Dropzone -->
+              <div class="stitch-dropzone" id="dropzoneContainer" onclick="document.getElementById('fileUploadInput').click()">
+                <input type="file" id="fileUploadInput" multiple accept=".pdf,.docx" style="display: none;" onchange="handleFilesSelected(this.files)">
+                <div class="dropzone-inner">
+                  <div class="dropzone-icon"><i data-lucide="file-up"></i></div>
+                  <h4>Drag &amp; Drop PDF / DOCX files here</h4>
+                  <p>or <span class="dropzone-browse">Browse local files</span> from your computer</p>
+                  <span class="dropzone-hint">Supports: .pdf, .docx legal briefs, FIRs, and Bare Acts (Multi-file upload enabled)</span>
+                </div>
+              </div>
+
+              <!-- Selected Files Staging List -->
+              <div id="stagedFilesContainer" class="staged-files-box hidden">
+                <div class="staged-header">
+                  <span id="stagedCountText">0 Files Selected</span>
+                  <button class="stitch-btn-primary btn-sm" id="btnUploadNow" onclick="uploadStagedFiles()">
+                    <i data-lucide="upload"></i> <span>Upload All to E:\PDF\</span>
+                  </button>
+                </div>
+                <div class="staged-list" id="stagedFilesList"></div>
+              </div>
+            </div>
+
+            <!-- Ingestion Queue Live Monitor Card -->
+            <div class="stitch-card">
+              <div class="card-top-row">
+                <h3 class="card-heading">Live Queue Inspector</h3>
+                <button class="icon-circle-btn" onclick="refreshLiveQueueManual()" title="Refresh Queue from Disk">
+                  <i data-lucide="refresh-cw" id="queueRefreshIcon"></i>
+                </button>
+              </div>
+              <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 0.5rem;">Files currently waiting in <code>E:\PDF\</code>:</p>
+              
+              <!-- Selection & Bulk Actions Control Bar -->
+              <div class="queue-control-bar" id="queueControlBar">
+                <label class="queue-cb-group">
+                  <input type="checkbox" id="queueSelectAllCheckbox" onchange="toggleSelectAllQueue(this.checked)">
+                  <span id="queueSelectAllLabel">Select All</span>
+                </label>
+                <div class="queue-bulk-actions" id="queueBulkActionsContainer" style="display: none;">
+                  <button class="queue-bulk-delete-btn" onclick="deleteSelectedQueueFiles()">
+                    <i data-lucide="trash-2"></i> <span id="queueDeleteSelectedLabel">Delete (0)</span>
+                  </button>
+                  <button class="queue-bulk-deselect-btn" onclick="deselectAllQueue()">Deselect</button>
+                </div>
+                <button class="queue-clear-all-link" id="queueClearAllBtn" onclick="clearFullQueue()" title="Delete all pending files in E:\PDF\">Clear All</button>
+              </div>
+
+              <div class="queue-files-list" id="liveQueueFilesList">
+                <div class="empty-queue-placeholder">
+                  <i data-lucide="inbox"></i>
+                  <span>Queue is currently empty (0 files).</span>
+                  <small>Drop files above to stage new conversions.</small>
+                </div>
+              </div>
+
+              <div class="card-progress-section" style="margin-top: 1rem;">
+                <button class="stitch-btn-primary btn-full" onclick="initiateExtractionProtocol()">
+                  <i data-lucide="play"></i> <span>Run Extraction Protocol</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Targeted Document Selection -->
+        <section id="targeted-file-section" class="stitch-section">
+          <div class="section-title-bar">
+            <div>
+              <h2 class="section-heading">Targeted Document Manual Selection</h2>
+              <p class="section-desc">Specify a single targeted document to extract with strict isolation without batch processing.</p>
+            </div>
+          </div>
+
+          <div class="stitch-card full-width-card">
+            <div class="targeted-file-grid">
+              <div class="stitch-form-group" style="flex: 1;">
+                <label class="form-label">Target File Name or Path:</label>
+                <input type="text" id="manualTargetFileInput" value="The MPID ACT 1999.pdf" class="stitch-input" placeholder="e.g. The MPID ACT 1999.pdf or E:\PDF\FIR_102.pdf">
+              </div>
+              <div style="display: flex; align-items: flex-end; gap: 0.5rem;">
+                <button class="stitch-btn-primary" onclick="runSingleTargetedFileExtraction()">
+                  <i data-lucide="zap"></i> <span>Extract Targeted File</span>
+                </button>
+              </div>
+            </div>
+            <p class="text-muted" style="font-size: 0.775rem; margin-top: 0.5rem;">
+              <i data-lucide="shield-check" style="width: 14px; height: 14px; display: inline;"></i> 
+              Strict Protocol: Target document will be converted to <code>E:\PDF to MD\<FileName>.md</code> and moved to <code>E:\Completed PDF file Extraction\</code>.
+            </p>
+          </div>
+        </section>
+
+        <!-- Section 2: Architectural Mind Map -->
+        <section id="architecture" class="stitch-section">
+          <div class="section-title-bar">
+            <div>
+              <h2 class="section-heading">System Mind Map &amp; Blueprint</h2>
+              <p class="section-desc">7-Layer Hierarchical Breakdown of the Legal Processing Engine</p>
+            </div>
+            <div class="section-actions">
+              <button class="stitch-tab-btn active" id="btnShowMindmap" onclick="switchArchView('mindmap')">
+                <i data-lucide="network"></i> Mind Map View
+              </button>
+              <button class="stitch-tab-btn" id="btnShowFlowchart" onclick="switchArchView('flowchart')">
+                <i data-lucide="git-merge"></i> Execution Flowchart
+              </button>
+            </div>
+          </div>
+
+          <div class="stitch-card full-width-card">
+            <!-- Mind Map View -->
+            <div id="mindmapView">
+              <div class="mindmap-root-banner">
+                <i data-lucide="scale"></i>
+                <span>Maharashtra Police &amp; Legal Document Intelligence Pipeline</span>
+              </div>
+
+              <div class="mindmap-cards-grid">
+                <!-- Branch 1 -->
+                <div class="mm-branch-card" id="mmBranch1">
+                  <div class="mm-header"><i data-lucide="hard-drive"></i> 1. Ingestion &amp; Office Engine</div>
+                  <div class="mm-items">
+                    <div class="mm-item"><span class="magic-highlight in-view">Strict Ingestion: <code>E:\PDF\</code> ONLY</span></div>
+                    <div class="mm-item">Office Engine: <span class="magic-highlight in-view"><strong>Microsoft MarkItDown</strong> (<code>.docx/.pdf</code>)</span></div>
+                    <div class="mm-item">Ignore Temp Lock Files: <code>~$*.docx</code></div>
+                    <div class="mm-item"><span class="magic-brush-highlight in-view">Zero Archive Re-Scanning</span></div>
+                  </div>
+                </div>
+
+                <!-- Branch 2 -->
+                <div class="mm-branch-card" id="mmBranch2">
+                  <div class="mm-header"><i data-lucide="cpu"></i> 2. Parallel Dispatcher</div>
+                  <div class="mm-items">
+                    <div class="mm-item"><span class="magic-highlight in-view">Configurable CPU Workers (4 / 6 / 8 / 12)</span></div>
+                    <div class="mm-item">ThreadPoolExecutor Architecture</div>
+                    <div class="mm-item">Page-Level Parallelization</div>
+                    <div class="mm-item">Persistent Background Daemon</div>
+                  </div>
+                </div>
+
+                <!-- Branch 3 -->
+                <div class="mm-branch-card" id="mmBranch3">
+                  <div class="mm-header"><i data-lucide="eye"></i> 3. Extraction, Vision &amp; MarkItDown</div>
+                  <div class="mm-items">
+                    <div class="mm-item"><strong>Microsoft MarkItDown:</strong> Office &amp; Table Structure</div>
+                    <div class="mm-item"><strong>Digital Text:</strong> PyMuPDF Stream Parsing</div>
+                    <div class="mm-item"><strong>Scanned / CCTNS:</strong> <span class="magic-highlight in-view">200 / 300 DPI Raster</span></div>
+                    <div class="mm-item">OpenCV Bilateral &amp; CLAHE Filtering</div>
+                    <div class="mm-item">Tesseract 5.5 OCR (<span class="magic-highlight in-view"><code>mar+eng</code></span>)</div>
+                  </div>
+                </div>
+
+                <!-- Branch 4 -->
+                <div class="mm-branch-card" id="mmBranch4">
+                  <div class="mm-header"><i data-lucide="filter"></i> 4. Semantic Cleaning &amp; Legal NLP</div>
+                  <div class="mm-items">
+                    <div class="mm-item"><span class="magic-highlight in-view">Marathi OCR Glyph &amp; Compound Word Repair</span></div>
+                    <div class="mm-item"><span class="magic-brush-highlight in-view">Gazette Boilerplate &amp; Marginal Notes Stripper</span></div>
+                    <div class="mm-item">Form Dotted-Line Artifact Suppressor</div>
+                    <div class="mm-item">WordNinja English Word Repair</div>
+                    <div class="mm-item">Devanagari Unicode Preserved</div>
+                  </div>
+                </div>
+
+                <!-- Branch 5 -->
+                <div class="mm-branch-card" id="mmBranch5">
+                  <div class="mm-header"><i data-lucide="folder-check"></i> 5. Storage &amp; Archive</div>
+                  <div class="mm-items">
+                    <div class="mm-item">UTF-8 Markdown &rarr; <span class="magic-highlight in-view"><code>E:\PDF to MD\</code></span></div>
+                    <div class="mm-item">Auto-Move &rarr; <span class="magic-highlight in-view"><code>E:\Completed PDF file Extraction\</code></span></div>
+                    <div class="mm-item">Zero-Loss Verification Pass</div>
+                    <div class="mm-item">Clean Ingestion Reset</div>
+                  </div>
+                </div>
+
+                <!-- Branch 6 -->
+                <div class="mm-branch-card" id="mmBranch6">
+                  <div class="mm-header"><i data-lucide="brain"></i> 6. Legal Intelligence</div>
+                  <div class="mm-items">
+                    <div class="mm-item"><span class="magic-highlight in-view">BNS 2023 / BNSS 173</span> Cross-Ref</div>
+                    <div class="mm-item">Police Manual Procedural Rules</div>
+                    <div class="mm-item">Standardized Panchanama Forms</div>
+                    <div class="mm-item">Ready for AI Legal Search &amp; RAG</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Flowchart View -->
+            <div id="flowchartView" class="hidden">
+              <div class="stitch-flowchart-grid">
+                <div class="fc-card">
+                  <span class="fc-step-num">STEP 01</span>
+                  <h4>Strict Ingestion</h4>
+                  <p>Monitors <code>E:\PDF\</code> for active <code>.pdf</code> and <code>.docx</code> documents.</p>
+                </div>
+                <div class="fc-card">
+                  <span class="fc-step-num">STEP 02</span>
+                  <h4>MarkItDown &amp; Vector</h4>
+                  <p>Executes Microsoft MarkItDown 0.1.7 for Word tables &amp; PyMuPDF digital streams.</p>
+                </div>
+                <div class="fc-card">
+                  <span class="fc-step-num">STEP 03</span>
+                  <h4>200/300 DPI &amp; CLAHE</h4>
+                  <p>Applies OpenCV bilateral filter &amp; adaptive CLAHE contrast enhancement on scans.</p>
+                </div>
+                <div class="fc-card">
+                  <span class="fc-step-num">STEP 04</span>
+                  <h4>Vision OCR (mar+eng)</h4>
+                  <p>Multi-lingual Tesseract 5.5 OCR capturing Devanagari &amp; English legal citations.</p>
+                </div>
+                <div class="fc-card">
+                  <span class="fc-step-num">STEP 05</span>
+                  <h4>Marathi Legal NLP</h4>
+                  <p>Suppresses dotted-line glyph noise, fixes compound words, and repairs WordNinja spacing.</p>
+                </div>
+                <div class="fc-card">
+                  <span class="fc-step-num">STEP 06</span>
+                  <h4>Export &amp; Auto-Archive</h4>
+                  <p>Writes UTF-8 <code>.md</code> to <code>E:\PDF to MD\</code> and moves source to Completed Archive.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 3: Master 6-Step SOP Guide -->
+        <section id="sop" class="stitch-section">
+          <div class="section-title-bar">
+            <div>
+              <h2 class="section-heading">Master 6-Step Standard Operating Procedure (SOP)</h2>
+              <p class="section-desc">Engineering handbook for zero-loss Marathi &amp; English document conversion</p>
+            </div>
+          </div>
+
+          <div class="stitch-sop-grid">
+            <div class="sop-stitch-card" onclick="showSopDetails(1)">
+              <div class="sop-card-top">
+                <span class="sop-chip">STEP 1</span>
+                <i data-lucide="scan-line" class="sop-icon-blue"></i>
+              </div>
+              <h3 class="sop-title">DETECT</h3>
+              <p class="sop-desc">Strictly discovers active files in <code>E:\PDF\</code>, ignoring lock files and classifying digital streams vs scans.</p>
+            </div>
+
+            <div class="sop-stitch-card" onclick="showSopDetails(2)">
+              <div class="sop-card-top">
+                <span class="sop-chip">STEP 2</span>
+                <i data-lucide="image" class="sop-icon-blue"></i>
+              </div>
+              <h3 class="sop-title">RENDER</h3>
+              <p class="sop-desc">Renders scanned/corrupt pages to 200–300 DPI high-contrast bitmaps via PyMuPDF for visual inspection and OCR.</p>
+            </div>
+
+            <div class="sop-stitch-card" onclick="showSopDetails(3)">
+              <div class="sop-card-top">
+                <span class="sop-chip">STEP 3</span>
+                <i data-lucide="sliders" class="sop-icon-blue"></i>
+              </div>
+              <h3 class="sop-title">PREPROCESS</h3>
+              <p class="sop-desc">Applies OpenCV bilateral noise removal, CLAHE contrast enhancement, and Otsu binarization for stamps.</p>
+            </div>
+
+            <div class="sop-stitch-card" onclick="showSopDetails(4)">
+              <div class="sop-card-top">
+                <span class="sop-chip">STEP 4</span>
+                <i data-lucide="file-code-2" class="sop-icon-blue"></i>
+              </div>
+              <h3 class="sop-title">EXTRACT</h3>
+              <p class="sop-desc">Runs multi-lingual Tesseract OCR (<code>mar+eng</code>) with automatic PSM mode and native table detection.</p>
+            </div>
+
+            <div class="sop-stitch-card" onclick="showSopDetails(5)">
+              <div class="sop-card-top">
+                <span class="sop-chip">STEP 5</span>
+                <i data-lucide="align-left" class="sop-icon-blue"></i>
+              </div>
+              <h3 class="sop-title">CLEAN &amp; ARRANGE</h3>
+              <p class="sop-desc">Strips Gazette boilerplate headers, repairs glued words via WordNinja, and structures clean Markdown hierarchy.</p>
+            </div>
+
+            <div class="sop-stitch-card" onclick="showSopDetails(6)">
+              <div class="sop-card-top">
+                <span class="sop-chip">STEP 6</span>
+                <i data-lucide="archive" class="sop-icon-blue"></i>
+              </div>
+              <h3 class="sop-title">VALIDATE &amp; ARCHIVE</h3>
+              <p class="sop-desc">Writes final UTF-8 Markdown to <code>E:\PDF to MD\</code> and automatically moves source file to Completed Archive.</p>
+            </div>
+          </div>
+
+          <!-- SOP Details Box -->
+          <div class="stitch-card full-width-card" style="margin-top: 1.25rem;">
+            <div class="sop-detail-header">
+              <h4 id="sopDetailTitle" class="text-blue">Select a step above to inspect code &amp; details</h4>
+              <button class="icon-circle-btn" onclick="closeSopDetail()"><i data-lucide="x"></i></button>
+            <div id="sopDetailContent" class="sop-detail-body">
+              Click any of the 6 steps above to view underlying Python logic, regex rules, and before/after transformation examples.
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 4: Documents Explorer -->
+        <section id="documents" class="stitch-section">
+          <div class="section-title-bar">
+            <div>
+              <h2 class="section-heading">Document Repository Explorer</h2>
+              <p class="section-desc" id="docSectionDesc">Browse, filter, and inspect extracted Markdown (.md) documents in <code>E:\PDF to MD\</code></p>
+            </div>
+            <div class="section-actions">
+              <div class="stitch-search-input">
+                <i data-lucide="search"></i>
+                <input type="text" id="docSearch" placeholder="Search .md documents..." oninput="filterDocuments()">
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter Pills -->
+          <div class="stitch-filter-bar">
+            <button class="filter-btn active" data-filter="all" id="filterAllBtn" onclick="setDocFilter('all')">All .MD Documents (0)</button>
+            <button class="filter-btn" data-filter="acts" onclick="setDocFilter('acts')">Bare Acts (0)</button>
+            <button class="filter-btn" data-filter="manuals" onclick="setDocFilter('manuals')">Police Manuals (0)</button>
+            <button class="filter-btn" data-filter="firs" onclick="setDocFilter('firs')">Police Records / FIRs (0)</button>
+            <button class="filter-btn" data-filter="forms" onclick="setDocFilter('forms')">Legal Forms &amp; Orders (0)</button>
+          </div>
+
+          <!-- Documents Table -->
+          <div class="stitch-card full-width-card no-padding">
+            <table class="stitch-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Extracted Markdown (.md) Document</th>
+                  <th>Category</th>
+                  <th>Format</th>
+                  <th>File Size</th>
+                  <th>Accuracy</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="docTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Section 5: CLI Studio -->
+        <section id="cli-builder" class="stitch-section">
+          <div class="section-title-bar">
+            <div>
+              <h2 class="section-heading">Interactive CLI Studio &amp; Command Builder</h2>
+              <p class="section-desc">Generate precise batch and single-file extraction commands with real-time flag customization</p>
+            </div>
+          </div>
+
+          <div class="stitch-cli-grid">
+            <div class="stitch-card">
+              <h3 class="cli-card-title"><i data-lucide="settings"></i> Pipeline Configuration</h3>
+              
+              <div class="stitch-form-group">
+                <label class="form-label">Execution Mode:</label>
+                <div class="stitch-radio-row">
+                  <label class="radio-item">
+                    <input type="radio" name="runMode" value="batch" checked onchange="updateCliCommand()">
+                    <span>Batch Mode (Process active queue in E:\PDF\)</span>
+                  </label>
+                  <label class="radio-item">
+                    <input type="radio" name="runMode" value="single" onchange="updateCliCommand()">
+                    <span>Single Document Mode</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="stitch-form-group" id="singleFileGroup" style="display: none;">
+                <label class="form-label">Target File Path:</label>
+                <input type="text" id="cliSingleFile" value="E:\PDF\The MPID ACT 1999.pdf" class="stitch-input" oninput="updateCliCommand()">
+              </div>
+
+              <div class="stitch-form-group">
+                <label class="form-label">Source Queue Folder (<code>--input</code>):</label>
+                <input type="text" id="cliInputDir" value="E:\PDF" class="stitch-input" oninput="updateCliCommand()">
+              </div>
+
+              <div class="stitch-form-group">
+                <label class="form-label">Target Markdown Folder (<code>--output</code>):</label>
+                <input type="text" id="cliOutputDir" value="E:\PDF to MD" class="stitch-input" oninput="updateCliCommand()">
+              </div>
+
+              <div class="stitch-form-group">
+                <label class="form-label">Completed Archive (<code>--completed-dir</code>):</label>
+                <input type="text" id="cliArchiveDir" value="E:\Completed PDF file Extraction" class="stitch-input" oninput="updateCliCommand()">
+              </div>
+
+              <div class="form-two-cols">
+                <div class="stitch-form-group">
+                  <label class="form-label">Parallel Workers:</label>
+                  <select id="cliWorkers" class="stitch-select" onchange="updateCliCommand()">
+                    <option value="4">4 Workers</option>
+                    <option value="6" selected>6 Workers (Recommended)</option>
+                    <option value="8">8 Workers (High CPU)</option>
+                  </select>
+                </div>
+                <div class="stitch-form-group">
+                  <label class="form-label">Auto-Archive:</label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" id="cliAutoMove" checked onchange="updateCliCommand()">
+                    <span>Move source to archive</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Terminal Generated Output -->
+            <div class="stitch-terminal-card">
+              <div class="terminal-top">
+                <span class="term-name">PowerShell Command Generator</span>
+                <button class="stitch-btn-primary btn-sm" onclick="copyCliCommand()">
+                  <i data-lucide="copy"></i> <span id="copyBtnText">Copy Command</span>
+                </button>
+              </div>
+              <div class="terminal-log-scroll">
+                <div class="term-cmd-line">PS C:\&gt; <span class="cmd-highlight" id="generatedCmd">python "E:\python\process_pdf_to_md.py" --batch</span></div>
+                <div class="term-help-text">
+                  <p>[INFO] Initializing High-Performance Hybrid OCR Engine...</p>
+                  <p>[INFO] Language Models Active: mar (Marathi) + eng (English)</p>
+                  <p>[INFO] Parallel Workers: 6 CPU Threads</p>
+                  <p class="text-blue">============================================================</p>
+                  <p>Ready to process incoming .pdf and .docx documents in E:\PDF\</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 6: Benchmarks -->
+        <section id="benchmarks" class="stitch-section">
+          <div class="section-title-bar">
+            <div>
+              <h2 class="section-heading">Accuracy Benchmarks &amp; Performance Metrics</h2>
+              <p class="section-desc">Verification scores across 44 documents (2,870+ pages)</p>
+            </div>
+          </div>
+
+          <div class="stitch-cards-grid">
+            <div class="stitch-card" style="grid-column: span 2;">
+              <h3 class="card-heading">Category Accuracy Breakdown</h3>
+              <div class="chart-wrapper">
+                <canvas id="accuracyChart"></canvas>
+              </div>
+            </div>
+
+            <div class="stitch-card">
+              <h3 class="card-heading">Enterprise Quality Invariants</h3>
+              <ul class="card-bullet-list" style="margin-top: 1rem;">
+                <li style="margin-bottom: 1rem;">
+                  <strong class="text-blue">Zero-Loss Character Preservation</strong>
+                  <p style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">100% of legal sections, schedules, and definitions preserved in structured Markdown.</p>
+                </li>
+                <li style="margin-bottom: 1rem;">
+                  <strong class="text-blue">Pure Marathi Devanagari OCR</strong>
+                  <p style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">Tesseract 5.5 configured strictly for <code>mar+eng</code> with zero Hindi cross-talk.</p>
+                </li>
+                <li>
+                  <strong class="text-blue">Strict Ingestion Queue Isolation</strong>
+                  <p style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">Strictly processes files in <code>E:\PDF\</code> and moves completed source files automatically.</p>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Stitch Workspace Footer -->
+        <footer class="stitch-footer">
+          <div class="footer-left">
+            <p><strong>Maharashtra Police &amp; Legal Document Intelligence Studio</strong> &bull; Stitch Enterprise Edition</p>
+            <p class="text-muted">Engineered with PyMuPDF, OpenCV CLAHE, Tesseract 5.5 (<code>mar+eng</code>), and Strict Queue Architecture.</p>
+          </div>
+          <div class="footer-right">
+            <a href="file:///E:/Instructions/GUIDEBOOK.md" class="footer-link"><i data-lucide="book-open"></i> Master Guide Book</a>
+            <a href="file:///E:/python/process_pdf_to_md.py" class="footer-link"><i data-lucide="code-2"></i> Python Engine</a>
+          </div>
+        </footer>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Protocol Decision Modal (When queue is empty or multiple files) -->
+  <div id="protocolDecisionModal" class="modal-backdrop hidden">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="play-circle" class="text-blue"></i>
+          <h4 id="protocolModalTitle">Extraction Protocol Notice</h4>
+        </div>
+        <button class="icon-circle-btn" onclick="closeProtocolModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" id="protocolModalBody">
+        <!-- Dynamic Content injected via app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Location Config Modal -->
+  <div id="locationConfigModal" class="modal-backdrop hidden">
+    <div class="modal-dialog" style="max-width: 600px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="folder-cog" class="text-blue"></i>
+          <h4>Ingestion Directory Configuration</h4>
+        </div>
+        <button class="icon-circle-btn" onclick="closeLocationConfigModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="stitch-form-group">
+          <label class="form-label">Ingestion Queue Folder (<code>--input</code>):</label>
+          <input type="text" id="configInputPath" value="E:\PDF" class="stitch-input">
+        </div>
+        <div class="stitch-form-group">
+          <label class="form-label">Target Markdown Output (<code>--output</code>):</label>
+          <input type="text" id="configOutputPath" value="E:\PDF to MD" class="stitch-input">
+        </div>
+        <div class="stitch-form-group">
+          <label class="form-label">Completed Archive Folder (<code>--completed-dir</code>):</label>
+          <input type="text" id="configArchivePath" value="E:\Completed PDF file Extraction" class="stitch-input">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+          <button class="stitch-btn-secondary" onclick="closeLocationConfigModal()">Cancel</button>
+          <button class="stitch-btn-primary" onclick="saveLocationConfig()">Save &amp; Verify Location</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Document Markdown Modal Reader -->
+  <div id="docPreviewModal" class="modal-backdrop hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-lucide="file-text" class="text-blue"></i>
+          <div>
+            <h4 id="previewDocTitle">Document Markdown Viewer</h4>
+            <span class="modal-meta" id="previewDocMeta">Loading metadata...</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="stitch-btn-primary btn-sm" onclick="copyPreviewMarkdown()"><i data-lucide="copy"></i> Copy Markdown</button>
+          <button class="icon-circle-btn" onclick="closeDocPreview()"><i data-lucide="x"></i></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <pre class="markdown-view" id="previewCodeContent"><code>Loading document markdown content...</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Health & Portable Machine Setup Modal (Shown ONLY when dependencies are missing on another PC) -->
+  <div id="systemHealthModal" class="modal-backdrop hidden">
+    <div class="modal-dialog" style="max-width: 580px; width: 92%;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="card-icon-wrap blue" style="width: 36px; height: 36px; border-radius: 8px;">
+            <i data-lucide="wrench"></i>
+          </div>
+          <div>
+            <h4>Machine Setup &amp; Architecture Bootstrap</h4>
+            <span class="modal-meta">Auto-detected dependencies for this PC</span>
+          </div>
+        </div>
+        <button class="icon-circle-btn" onclick="closeHealthModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem;">
+        <p style="color:#64748b; font-size:0.85rem; margin-bottom:1rem; line-height:1.5;">
+          The system detected that this is a new machine setup. Some core architecture libraries or language models need to be initialized.
+        </p>
+        
+        <div id="healthItemsList" style="display:flex; flex-direction:column; gap:0.6rem; margin-bottom:1.25rem;">
+          <!-- Dynamically populated -->
+        </div>
+
+        <div id="installProgressBar" class="stitch-progress-bar-lg hidden" style="margin-bottom: 1rem;">
+          <div class="stitch-progress-fill-lg" style="width: 100%; animation: pulse 1s infinite;"></div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+          <button class="stitch-btn-secondary" onclick="closeHealthModal()">Dismiss</button>
+          <button class="stitch-btn-primary" id="btnAutoInstall" onclick="runAutoInstallDependencies()">
+            <i data-lucide="download-cloud"></i> <span>Auto-Install Missing Components</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
