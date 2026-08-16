@@ -58,7 +58,7 @@ class PipelineManager:
             if len(self.logs) > 800:
                 self.logs.pop(0)
 
-    def start_batch(self, workers=6, gpu=False):
+    def start_batch(self, workers=6, gpu=False, mode='smart_hybrid', api_key=None):
         with self.lock:
             if self.state == 'running':
                 return {'success': False, 'error': 'Pipeline is already running'}
@@ -82,7 +82,7 @@ class PipelineManager:
         self.worker_thread.start()
         return {'success': True, 'state': 'running'}
 
-    def start_single(self, filename, workers=6, gpu=False):
+    def start_single(self, filename, workers=6, gpu=False, mode='smart_hybrid', api_key=None):
         with self.lock:
             if self.state == 'running':
                 return {'success': False, 'error': 'Pipeline is already running'}
@@ -461,7 +461,9 @@ class LegalStudioHandler(SimpleHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode('utf-8')) if length > 0 else {}
             workers = payload.get('workers', 6)
             gpu = payload.get('gpu', False)
-            resp = GLOBAL_PIPELINE.start_batch(workers=workers, gpu=gpu)
+            mode = payload.get('mode', ENGINE_MODE)
+            api_key = payload.get('api_key', AI_API_KEY)
+            resp = GLOBAL_PIPELINE.start_batch(workers=workers, gpu=gpu, mode=mode, api_key=api_key)
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.end_headers()
@@ -474,7 +476,9 @@ class LegalStudioHandler(SimpleHTTPRequestHandler):
             fname = payload.get('file', '')
             workers = payload.get('workers', 6)
             gpu = payload.get('gpu', False)
-            resp = GLOBAL_PIPELINE.start_single(fname, workers=workers, gpu=gpu)
+            mode = payload.get('mode', ENGINE_MODE)
+            api_key = payload.get('api_key', AI_API_KEY)
+            resp = GLOBAL_PIPELINE.start_single(fname, workers=workers, gpu=gpu, mode=mode, api_key=api_key)
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.end_headers()
