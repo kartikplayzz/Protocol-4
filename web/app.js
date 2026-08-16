@@ -433,112 +433,40 @@ async function initiateExtractionProtocol() {
     return;
   }
 
+  // If paused, resume
+  if (pipelineState === 'paused') {
+    try {
+      await fetch('/api/pipeline/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workers: selectedWorkerCount })
+      });
+      showToast("Pipeline Resumed", "Extraction protocol resumed.", "success");
+      pollPersistentPipelineState();
+    } catch(e) {}
+    return;
+  }
+
   await fetchLiveQueueStatus();
 
   // Location Not Valid check
   if (!isLocationValid) {
     addTerminalLog("LOCATION", "WARNING: Location 'E:\\PDF\\' was not detected on this device.", "error");
-    addTerminalLog("LOCATION", "Set your location in your file if it is not set, or upload files directly.", "warn");
-    openProtocolDecisionModal({
-      title: "Set Ingestion Location",
-      html: `
-        <p style="color:#64748b; font-size:0.85rem; margin-bottom:1rem;">
-          The designated input directory <code>E:\\PDF\\</code> was not found on this machine.
-        </p>
-        <div class="protocol-choice-group">
-          <div class="protocol-choice-card" onclick="closeProtocolModal(); scrollToSection('upload-section');">
-            <div class="choice-icon"><i data-lucide="upload-cloud"></i></div>
-            <div class="choice-info">
-              <h5>Upload Files Directly Through Browser</h5>
-              <p>Upload PDF/DOCX files from your local machine to the server.</p>
-            </div>
-          </div>
-          <div class="protocol-choice-card" onclick="closeProtocolModal(); openLocationConfigModal();">
-            <div class="choice-icon"><i data-lucide="folder-cog"></i></div>
-            <div class="choice-info">
-              <h5>Configure Custom Folder Path</h5>
-              <p>Set custom directory paths for input, output, and archive.</p>
-            </div>
-          </div>
-        </div>
-      `
-    });
+    showToast("Directory Missing", "Please configure or create 'E:\\PDF\\'.", "warning");
     return;
   }
 
-  // Check queue count
   const count = liveQueueFiles ? liveQueueFiles.length : 0;
 
   if (count === 0) {
-    // QUEUE IS EMPTY
     addTerminalLog("INGEST", "Strict Scan: Ingestion folder 'E:\\PDF\\' is currently EMPTY (0 pending files).", "warn");
-    addTerminalLog("INFO", "All 44 historic documents have already been converted to 'E:\\PDF to MD\\' and archived.", "success");
-    addTerminalLog("PROTOCOL", "Ready for new documents. Upload files to 'E:\\PDF\\' or extract a targeted document.", "info");
-    
-    openProtocolDecisionModal({
-      title: "Ingestion Queue is Empty",
-      html: `
-        <div style="text-align:center; padding: 0.5rem 0 1rem;">
-          <div style="width:48px;height:48px;border-radius:50%;background:#eff6ff;color:#1d68f2;display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
-            <i data-lucide="inbox" style="width:24px;height:24px;"></i>
-          </div>
-          <h4 style="font-size:1rem;color:#0f172a;margin-bottom:0.25rem;">The folder <code>E:\\PDF\\</code> is currently empty</h4>
-          <p style="font-size:0.8rem;color:#64748b;">All 44 historic documents are already extracted and safely archived.</p>
-        </div>
-        <div class="protocol-choice-group">
-          <div class="protocol-choice-card" onclick="closeProtocolModal(); scrollToSection('upload-section');">
-            <div class="choice-icon"><i data-lucide="upload-cloud"></i></div>
-            <div class="choice-info">
-              <h5>Upload Documents Now</h5>
-              <p>Upload new .pdf or .docx files to <code>E:\\PDF\\</code> to extract.</p>
-            </div>
-          </div>
-          <div class="protocol-choice-card" onclick="closeProtocolModal(); scrollToSection('targeted-file-section');">
-            <div class="choice-icon"><i data-lucide="crosshair"></i></div>
-            <div class="choice-info">
-              <h5>Select Targeted Document Manually</h5>
-              <p>Specify a single document path to run standalone conversion.</p>
-            </div>
-          </div>
-        </div>
-      `
-    });
+    addTerminalLog("INFO", "All documents in queue have already been extracted to 'E:\\PDF to MD\\' and archived.", "success");
+    showToast("Queue Empty", "No pending files in E:\\PDF\\. Drop new files to extract.", "info");
     return;
   }
 
-  if (count === 1) {
-    // SINGLE FILE IN QUEUE
-    const file = liveQueueFiles[0];
-    addTerminalLog("PROTOCOL", `Found 1 pending file in queue: '${file.name}'. Initiating extraction protocol...`, "info");
-    runSingleTargetedFileExtraction(file.name);
-    return;
-  }
-
-  // MULTIPLE FILES IN QUEUE
-  openProtocolDecisionModal({
-    title: `Found ${count} Documents in Queue`,
-    html: `
-      <p style="color:#64748b; font-size:0.85rem; margin-bottom:1rem;">
-        There are <strong>${count} pending documents</strong> in <code>E:\\PDF\\</code>. The extraction protocol processes documents <strong>strictly one by one</strong> (separate extraction).
-      </p>
-      <div class="protocol-choice-group">
-        <div class="protocol-choice-card" onclick="closeProtocolModal(); executeRealSequentialMultiBatch();">
-          <div class="choice-icon"><i data-lucide="zap"></i></div>
-          <div class="choice-info">
-            <h5>⚡ Proceed with Sequential Multi-File Extraction</h5>
-            <p>Convert all ${count} files one by one with strict isolation and archive source files.</p>
-          </div>
-        </div>
-        <div class="protocol-choice-card" onclick="closeProtocolModal(); scrollToSection('targeted-file-section');">
-          <div class="choice-icon"><i data-lucide="crosshair"></i></div>
-          <div class="choice-info">
-            <h5>🎯 Select a Single Document Manually</h5>
-            <p>Pick one specific document to convert without processing the full batch.</p>
-          </div>
-        </div>
-      </div>
-    `
-  });
+  // Immediate 1-Click Execution!
+  await executeRealSequentialMultiBatch();
 }
 
 // ==========================================================================
@@ -1149,18 +1077,62 @@ function updateMilestones(activeStep) {
 
 async function pausePipelineExecution() {
   try {
-    await fetch('/api/pipeline/pause', { method: 'POST' });
-    showToast("Pipeline Paused", "Extraction paused.", "warning");
+    const res = await fetch('/api/pipeline/pause', { method: 'POST' });
+    const data = await res.json();
+    pipelineState = data.state || 'paused';
+    
+    const btnStart = document.getElementById('btnStartPipeline');
+    const btnPause = document.getElementById('btnPausePipeline');
+    if (btnStart) {
+      btnStart.disabled = false;
+      btnStart.innerHTML = '<i data-lucide="play"></i> <span>Resume Pipeline</span>';
+    }
+    if (btnPause) {
+      btnPause.disabled = true;
+    }
+    showToast("Pipeline Paused", "Extraction paused. Click 'Resume Pipeline' to continue.", "warning");
+    lucide.createIcons();
     pollPersistentPipelineState();
-  } catch (e) {}
+  } catch (e) {
+    showToast("Pause Error", "Could not pause pipeline.", "error");
+  }
 }
 
 async function resetPipelineExecution() {
   try {
-    await fetch('/api/pipeline/stop', { method: 'POST' });
-    showToast("Pipeline Reset", "Pipeline state reset to IDLE.", "info");
+    const res = await fetch('/api/pipeline/stop', { method: 'POST' });
+    const data = await res.json();
+    pipelineState = 'idle';
+
+    const btnStart = document.getElementById('btnStartPipeline');
+    const btnPause = document.getElementById('btnPausePipeline');
+    const progressBar = document.getElementById('masterProgressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const taskText = document.getElementById('pipelineCurrentTask');
+    const stepBadge = document.getElementById('pipelineCurrentStep');
+    const timerEl = document.getElementById('elapsedTimer');
+
+    if (btnStart) {
+      btnStart.disabled = false;
+      btnStart.innerHTML = '<i data-lucide="play"></i> <span>Run Pipeline</span>';
+    }
+    if (btnPause) {
+      btnPause.disabled = true;
+      btnPause.innerHTML = '<i data-lucide="pause"></i> <span>Pause</span>';
+    }
+    if (progressBar) progressBar.style.width = '0%';
+    if (progressPercent) progressPercent.innerText = '0%';
+    if (taskText) taskText.innerText = 'Status: Ready for Protocol';
+    if (stepBadge) stepBadge.innerText = 'IDLE';
+    if (timerEl) timerEl.innerText = '00:00';
+    
+    updateMilestones(1);
+    showToast("Pipeline Reset", "Extraction state reset to IDLE.", "success");
+    lucide.createIcons();
     pollPersistentPipelineState();
-  } catch (e) {}
+  } catch (e) {
+    showToast("Reset Notice", "Pipeline reset triggered.", "info");
+  }
 }
 
 function finishPipelineExecution(count = 1) {
