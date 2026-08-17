@@ -678,12 +678,17 @@ function renderServerTerminalLog(entry) {
   if (!container) return;
 
   let tagClass = 'tag-info';
-  if (entry.type === 'success') tagClass = 'tag-success';
-  if (entry.type === 'warn' || entry.type === 'warning') tagClass = 'tag-warn';
-  if (entry.type === 'error') tagClass = 'tag-error';
+  const tagUpper = (entry.tag || '').toUpperCase();
+  if (entry.type === 'success' || tagUpper === 'SUCCESS' || tagUpper === 'COMPLETE') tagClass = 'tag-success';
+  else if (entry.type === 'warn' || entry.type === 'warning' || tagUpper === 'WARN' || tagUpper === 'CANCEL') tagClass = 'tag-warn';
+  else if (entry.type === 'error' || tagUpper === 'ERROR' || tagUpper === 'FAIL') tagClass = 'tag-error';
+  else if (tagUpper === 'PAGE' || tagUpper === 'OCR') tagClass = 'tag-page';
+  else if (tagUpper === 'NLP' || tagUpper === 'MARKITDOWN') tagClass = 'tag-nlp';
+  else if (tagUpper === 'INGEST' || tagUpper === 'STATUS') tagClass = 'tag-status';
+  else if (tagUpper === 'PROGRESS') tagClass = 'tag-progress';
 
   const row = document.createElement('div');
-  row.className = `log-line ${entry.type}`;
+  row.className = `log-line ${entry.type || 'info'}`;
   row.innerHTML = `
     <span class="l-time">${entry.time}</span>
     <span class="l-tag ${tagClass}">${entry.tag}</span>
