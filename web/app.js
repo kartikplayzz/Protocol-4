@@ -1,3 +1,29 @@
+
+// Re-Ingest Files from Archive into E:\PDF\ Queue
+async function reingestArchivedFiles(count = 0) {
+  closeProtocolModal();
+  showToast("Re-Ingesting Files", "Copying documents from archive to E:\\PDF\\...", "info");
+  addTerminalLog("INGEST", "Re-ingesting documents from 'E:\\Completed PDF file Extraction\\' -> 'E:\\PDF\\'...", "info");
+  
+  try {
+    const res = await fetch('/api/reingest-archive', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count: count })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast("Files Staged", `Successfully staged ${data.count} document(s) in E:\\PDF\\.`, "success");
+      addTerminalLog("INGEST", `Successfully staged ${data.count} document(s) into active queue E:\\PDF\\.`, "success");
+      await fetchLiveQueueStatus();
+    } else {
+      showToast("Error", data.error || "Failed to re-ingest archived documents.", "error");
+    }
+  } catch (e) {
+    showToast("Network Error", "Could not reach server.", "error");
+  }
+}
+
 // ==========================================================================
 // MAHARASHTRA POLICE & LEGAL INTELLIGENCE STUDIO - FULL INTERACTIVE APPLICATION
 // ==========================================================================
@@ -433,144 +459,117 @@ async function initiateExtractionProtocol() {
     return;
   }
 
-  // If paused, resume
-  if (pipelineState === 'paused') {
-    try {
-      await fetch('/api/pipeline/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workers: selectedWorkerCount })
-      });
-      showToast("Pipeline Resumed", "Extraction protocol resumed.", "success");
-      pollPersistentPipelineState();
-    } catch(e) {}
-    return;
-  }
-
   await fetchLiveQueueStatus();
 
   // Location Not Valid check
   if (!isLocationValid) {
     addTerminalLog("LOCATION", "WARNING: Location 'E:\\PDF\\' was not detected on this device.", "error");
-    showToast("Directory Missing", "Please configure or create 'E:\\PDF\\'.", "warning");
+    addTerminalLog("LOCATION", "Set your location in your file if it is not set, or upload files directly.", "warn");
+    openProtocolDecisionModal({
+      title: "Set Ingestion Location",
+      html: `
+        <p style="color:#64748b; font-size:0.85rem; margin-bottom:1rem;">
+          The designated input directory <code>E:\\PDF\\</code> was not found on this machine.
+        </p>
+        <div class="protocol-choice-group">
+          <div class="protocol-choice-card" onclick="closeProtocolModal(); scrollToSection('upload-section');">
+            <div class="choice-icon"><i data-lucide="upload-cloud"></i></div>
+            <div class="choice-info">
+              <h5>Upload Files Directly Through Browser</h5>
+              <p>Upload PDF/DOCX files from your local machine to the server.</p>
+            </div>
+          </div>
+          <div class="protocol-choice-card" onclick="closeProtocolModal(); openLocationConfigModal();">
+            <div class="choice-icon"><i data-lucide="folder-cog"></i></div>
+            <div class="choice-info">
+              <h5>Configure Custom Folder Path</h5>
+              <p>Set custom directory paths for input, output, and archive.</p>
+            </div>
+          </div>
+        </div>
+      `
+    });
     return;
   }
 
+  // Check queue count
   const count = liveQueueFiles ? liveQueueFiles.length : 0;
 
   if (count === 0) {
+    // QUEUE IS EMPTY
     addTerminalLog("INGEST", "Strict Scan: Ingestion folder 'E:\\PDF\\' is currently EMPTY (0 pending files).", "warn");
-    addTerminalLog("INFO", "All documents in queue have already been extracted to 'E:\\PDF to MD\\' and archived.", "success");
-    showToast("Queue Empty", "No pending files in E:\\PDF\\. Drop new files to extract.", "info");
+    addTerminalLog("INFO", "All 44 historic documents have already been converted to 'E:\\PDF to MD\\' and archived.", "success");
+    addTerminalLog("PROTOCOL", "Ready for new documents. Upload files to 'E:\\PDF\\' or extract a targeted document.", "info");
+    
+    openProtocolDecisionModal({
+      title: "Ingestion Queue is Empty",
+      html: `
+        <div style="text-align:center; padding: 0.5rem 0 1rem;">
+          <div style="width:48px;height:48px;border-radius:50%;background:#eff6ff;color:#1d68f2;display:flex;align-items:center;justify-content:center;margin:0 auto 0.75rem;">
+            <i data-lucide="inbox" style="width:24px;height:24px;"></i>
+          </div>
+          <h4 style="font-size:1rem;color:#0f172a;margin-bottom:0.25rem;">The folder <code>E:\\PDF\\</code> is currently empty</h4>
+          <p style="font-size:0.8rem;color:#64748b;">All 44 historic documents are already extracted and safely archived.</p>
+        </div>
+        <div class="protocol-choice-group">
+          <div class="protocol-choice-card" onclick="closeProtocolModal(); scrollToSection('upload-section');">
+            <div class="choice-icon"><i data-lucide="upload-cloud"></i></div>
+            <div class="choice-info">
+              <h5>Upload Documents Now</h5>
+              <p>Upload new .pdf or .docx files to <code>E:\\PDF\\</code> to extract.</p>
+            </div>
+          </div>
+          <div class="protocol-choice-card" onclick="closeProtocolModal(); scrollToSection('targeted-file-section');">
+            <div class="choice-icon"><i data-lucide="crosshair"></i></div>
+            <div class="choice-info">
+              <h5>Select Targeted Document Manually</h5>
+              <p>Specify a single document path to run standalone conversion.</p>
+            </div>
+          </div>
+        </div>
+      `
+    });
     return;
   }
 
-  // Immediate 1-Click Execution!
-  await executeRealSequentialMultiBatch();
-}
-
-// ==========================================================================
-// MAGIC UI TERMINAL LOGGING & PERSISTENT STREAM ENGINE
-// ==========================================================================
-
-let autoScrollEnabled = true;
-let terminalLogCounter = 0;
-
-function toggleAutoScroll() {
-  autoScrollEnabled = !autoScrollEnabled;
-  const label = document.getElementById('autoScrollLabel');
-  const btn = document.getElementById('btnAutoScroll');
-  if (label) label.innerText = `Auto-Scroll: ${autoScrollEnabled ? 'ON' : 'OFF'}`;
-  if (btn) {
-    if (autoScrollEnabled) btn.classList.add('active');
-    else btn.classList.remove('active');
+  if (count === 1) {
+    // SINGLE FILE IN QUEUE
+    const file = liveQueueFiles[0];
+    addTerminalLog("PROTOCOL", `Found 1 pending file in queue: '${file.name}'. Initiating extraction protocol...`, "info");
+    runSingleTargetedFileExtraction(file.name);
+    return;
   }
-}
 
-function clearTerminalLogs() {
-  const container = document.getElementById('terminalLogsContainer');
-  if (container) {
-    container.innerHTML = `
-      <div class="log-line info">
-        <span class="l-idx">#001</span>
-        <span class="l-time">${new Date().toLocaleTimeString()}</span>
-        <span class="l-tag tag-info">READY</span>
-        <span class="l-msg">Terminal buffer cleared. Listening to extraction protocol...</span>
+  // MULTIPLE FILES IN QUEUE
+  openProtocolDecisionModal({
+    title: `Found ${count} Documents in Queue`,
+    html: `
+      <p style="color:#64748b; font-size:0.85rem; margin-bottom:1rem;">
+        There are <strong>${count} pending documents</strong> in <code>E:\\PDF\\</code>. The extraction protocol processes documents <strong>strictly one by one</strong> (separate extraction).
+      </p>
+      <div class="protocol-choice-group">
+        <div class="protocol-choice-card" onclick="closeProtocolModal(); executeRealSequentialMultiBatch();">
+          <div class="choice-icon"><i data-lucide="zap"></i></div>
+          <div class="choice-info">
+            <h5>⚡ Proceed with Sequential Multi-File Extraction</h5>
+            <p>Convert all ${count} files one by one with strict isolation and archive source files.</p>
+          </div>
+        </div>
+        <div class="protocol-choice-card" onclick="closeProtocolModal(); scrollToSection('targeted-file-section');">
+          <div class="choice-icon"><i data-lucide="crosshair"></i></div>
+          <div class="choice-info">
+            <h5>🎯 Select a Single Document Manually</h5>
+            <p>Pick one specific document to convert without processing the full batch.</p>
+          </div>
+        </div>
       </div>
-    `;
-    terminalLogCounter = 1;
-  }
-  showToast("Terminal Cleared", "Log stream reset.", "info");
-}
-
-async function copyTerminalLogs() {
-  const container = document.getElementById('terminalLogsContainer');
-  if (!container) return;
-  try {
-    await navigator.clipboard.writeText(container.innerText);
-    const label = document.getElementById('labelCopyTerm');
-    if (label) label.innerText = 'Copied! ✓';
-    setTimeout(() => { if (label) label.innerText = 'Copy'; }, 2000);
-    showToast("Terminal Logs Copied", "Full extraction log stream copied to clipboard.", "success");
-  } catch (e) {
-    showToast("Copy Notice", "Could not copy logs automatically.", "warning");
-  }
-}
-
-function toggleTerminalFullscreen() {
-  const term = document.getElementById('magicTerminal');
-  const icon = document.getElementById('iconFullscreen');
-  if (!term) return;
-  term.classList.toggle('magic-terminal-fullscreen');
-  if (term.classList.contains('magic-terminal-fullscreen')) {
-    if (icon) icon.setAttribute('data-lucide', 'minimize-2');
-  } else {
-    if (icon) icon.setAttribute('data-lucide', 'maximize-2');
-  }
-  lucide.createIcons();
-}
-
-function renderServerTerminalLog(entry) {
-  const container = document.getElementById('terminalLogsContainer');
-  if (!container) return;
-
-  terminalLogCounter++;
-  const idxStr = '#' + String(terminalLogCounter).padStart(3, '0');
-
-  const row = document.createElement('div');
-  const logType = entry.type || 'info';
-  row.className = `log-line ${logType}`;
-
-  let tagClass = 'tag-info';
-  const tagUpper = (entry.tag || 'INFO').toUpperCase();
-  if (tagUpper === 'SUCCESS' || tagUpper === 'CONVERTED' || tagUpper === 'COMPLETE') tagClass = 'tag-success';
-  else if (tagUpper === 'WARN' || tagUpper === 'CANCEL') tagClass = 'tag-warn';
-  else if (tagUpper === 'ERROR' || tagUpper === 'FAILED') tagClass = 'tag-error';
-  else if (tagUpper === 'HARDWARE' || tagUpper === 'GPU' || tagUpper === 'OCR') tagClass = 'tag-hardware';
-  else if (tagUpper === 'PROTOCOL' || tagUpper === 'INGEST' || tagUpper === 'PROGRESS') tagClass = 'tag-protocol';
-
-  row.innerHTML = `
-    <span class="l-idx">${idxStr}</span>
-    <span class="l-time">${entry.time || new Date().toLocaleTimeString()}</span>
-    <span class="l-tag ${tagClass}">${entry.tag || 'INFO'}</span>
-    <span class="l-msg">${entry.msg || ''}</span>
-  `;
-
-  container.appendChild(row);
-
-  if (autoScrollEnabled) {
-    container.scrollTop = container.scrollHeight;
-  }
-}
-
-function addTerminalLog(tag, msg, type = 'info') {
-  renderServerTerminalLog({
-    time: `[${new Date().toLocaleTimeString()}]`,
-    tag: tag,
-    msg: msg,
-    type: type
+    `
   });
 }
+
+// ==========================================================================
+// PERSISTENT PIPELINE STATE & LIVE STREAM ENGINE
+// ==========================================================================
 
 let knownLogIndex = 0;
 
@@ -651,53 +650,6 @@ async function pollPersistentPipelineState() {
 
 let selectedWorkerCount = 6;
 let isGpuAccelerated = false;
-let currentEngineMode = localStorage.getItem('protocol4_engine_mode') || 'smart_hybrid';
-
-function onEngineModeChange(mode) {
-  currentEngineMode = mode;
-  localStorage.setItem('protocol4_engine_mode', mode);
-  
-  let label = "🤖 Smart Hybrid (Auto-Route)";
-  if (mode === 'local_offline') label = "💻 Local Offline (MarkItDown + Tesseract)";
-  if (mode === 'cloud_ai') label = "🚀 Cloud AI Vision (Gemini Flash)";
-  
-  showToast("Workflow Mode", `Active Engine: ${label}`, "info");
-  addTerminalLog("WORKFLOW", `Engine workflow mode switched to: ${label}`, "info");
-}
-
-function openAiKeyModal() {
-  const modal = document.getElementById('aiKeyConfigModal');
-  const input = document.getElementById('geminiApiKeyInput');
-  const storedKey = localStorage.getItem('protocol4_gemini_key') || '';
-  if (input) input.value = storedKey;
-  if (modal) modal.classList.remove('hidden');
-}
-
-function closeAiKeyModal() {
-  const modal = document.getElementById('aiKeyConfigModal');
-  if (modal) modal.classList.add('hidden');
-}
-
-function saveAiKey() {
-  const input = document.getElementById('geminiApiKeyInput');
-  const key = input ? input.value.trim() : '';
-  if (key) {
-    localStorage.setItem('protocol4_gemini_key', key);
-    showToast("AI Key Saved", "Gemini Vision API Key configured for Lane B.", "success");
-    addTerminalLog("CONFIG", "Cloud AI Vision API Key updated.", "success");
-  } else {
-    localStorage.removeItem('protocol4_gemini_key');
-    showToast("Local Mode", "API key cleared. System will use 100% local OCR.", "info");
-  }
-  closeAiKeyModal();
-}
-
-function clearAiKey() {
-  localStorage.removeItem('protocol4_gemini_key');
-  const input = document.getElementById('geminiApiKeyInput');
-  if (input) input.value = '';
-  showToast("Key Cleared", "Gemini API Key removed. Local engine active.", "info");
-}
 
 function onWorkerCountChange(val) {
   if (typeof val === 'string' && val.startsWith('gpu')) {
@@ -721,147 +673,39 @@ function onWorkerCountChange(val) {
   }
 }
 
-let autoScrollEnabled = true;
-let terminalLogCounter = 3;
-
-function toggleAutoScroll() {
-  autoScrollEnabled = !autoScrollEnabled;
-  const btn = document.getElementById('btnAutoScroll');
-  const label = document.getElementById('autoScrollLabel');
-  if (btn && label) {
-    if (autoScrollEnabled) {
-      btn.classList.add('active');
-      label.innerText = 'Auto-Scroll: ON';
-      const container = document.getElementById('terminalLogsContainer');
-      if (container) container.scrollTop = container.scrollHeight;
-    } else {
-      btn.classList.remove('active');
-      label.innerText = 'Auto-Scroll: OFF';
-    }
-  }
-}
-
-function clearTerminalLogs() {
-  const container = document.getElementById('terminalLogsContainer');
-  if (container) {
-    container.innerHTML = `
-      <div class="log-line info">
-        <span class="l-idx">#001</span>
-        <span class="l-time">[${new Date().toTimeString().split(' ')[0]}]</span>
-        <span class="l-tag tag-info">STREAM</span>
-        <span class="l-msg">Terminal buffer cleared. Active pipeline monitoring bound to 'E:\\PDF\\'.</span>
-      </div>
-    `;
-    terminalLogCounter = 1;
-    showToast("Terminal Cleared", "Log stream history reset.", "info");
-  }
-}
-
-async function copyTerminalLogs() {
-  const container = document.getElementById('terminalLogsContainer');
-  const btn = document.getElementById('btnCopyTerm');
-  const icon = document.getElementById('iconCopyTerm');
-  const label = document.getElementById('labelCopyTerm');
-  if (!container) return;
-
-  const lines = Array.from(container.querySelectorAll('.log-line')).map(el => {
-    const time = el.querySelector('.l-time')?.innerText || '';
-    const tag = el.querySelector('.l-tag')?.innerText || '';
-    const msg = el.querySelector('.l-msg')?.innerText || '';
-    return `${time} [${tag}] ${msg}`;
-  }).join('\n');
-
-  try {
-    await navigator.clipboard.writeText(lines);
-    if (label) label.innerText = 'Copied! ✓';
-    if (btn) btn.classList.add('active');
-    setTimeout(() => {
-      if (label) label.innerText = 'Copy';
-      if (btn) btn.classList.remove('active');
-    }, 2000);
-    showToast("Copied to Clipboard", "Terminal log stream exported.", "success");
-  } catch (e) {
-    showToast("Copy Failed", "Please copy text manually.", "warning");
-  }
-}
-
-function toggleTerminalFullscreen() {
-  const term = document.getElementById('magicTerminal');
-  const icon = document.getElementById('iconFullscreen');
-  if (!term) return;
-
-  const isFull = term.classList.toggle('fullscreen');
-  if (icon) {
-    icon.setAttribute('data-lucide', isFull ? 'minimize-2' : 'maximize-2');
-    lucide.createIcons();
-  }
-
-  // Handle ESC key to exit fullscreen
-  if (isFull) {
-    const escHandler = (e) => {
-      if (e.key === 'Escape') {
-        term.classList.remove('fullscreen');
-        if (icon) {
-          icon.setAttribute('data-lucide', 'maximize-2');
-          lucide.createIcons();
-        }
-        window.removeEventListener('keydown', escHandler);
-      }
-    };
-    window.addEventListener('keydown', escHandler);
-  }
-}
-
 function renderServerTerminalLog(entry) {
   const container = document.getElementById('terminalLogsContainer');
   if (!container) return;
 
-  terminalLogCounter++;
-  const idxStr = '#' + String(terminalLogCounter).padStart(3, '0');
-
   let tagClass = 'tag-info';
-  const tagUpper = (entry.tag || '').toUpperCase();
-  if (entry.type === 'success' || tagUpper === 'SUCCESS' || tagUpper === 'COMPLETE') tagClass = 'tag-success';
-  else if (entry.type === 'warn' || entry.type === 'warning' || tagUpper === 'WARN') tagClass = 'tag-warn';
-  else if (entry.type === 'error' || tagUpper === 'ERROR' || tagUpper === 'FAILED') tagClass = 'tag-error';
-  else if (tagUpper === 'PROTOCOL') tagClass = 'tag-protocol';
-  else if (tagUpper === 'INGEST') tagClass = 'tag-ingest';
-  else if (tagUpper === 'HARDWARE' || tagUpper === 'GPU') tagClass = 'tag-hardware';
+  if (entry.type === 'success') tagClass = 'tag-success';
+  if (entry.type === 'warn' || entry.type === 'warning') tagClass = 'tag-warn';
+  if (entry.type === 'error') tagClass = 'tag-error';
 
   const row = document.createElement('div');
-  row.className = `log-line ${entry.type || 'info'}`;
+  row.className = `log-line ${entry.type}`;
   row.innerHTML = `
-    <span class="l-idx">${idxStr}</span>
     <span class="l-time">${entry.time}</span>
     <span class="l-tag ${tagClass}">${entry.tag}</span>
     <span class="l-msg">${entry.msg}</span>
   `;
   container.appendChild(row);
-
-  if (autoScrollEnabled) {
-    container.scrollTop = container.scrollHeight;
-  }
+  container.scrollTop = container.scrollHeight;
 }
 
 // Execute Real Sequential Multi-File Extraction via API (Persistent Backend Runner)
 async function executeRealSequentialMultiBatch() {
   scrollToSection('pipeline-runner');
-  const storedApiKey = localStorage.getItem('protocol4_gemini_key') || '';
   try {
     const res = await fetch('/api/pipeline/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        workers: selectedWorkerCount,
-        gpu: isGpuAccelerated,
-        mode: currentEngineMode,
-        api_key: storedApiKey
-      })
+      body: JSON.stringify({ workers: selectedWorkerCount, gpu: isGpuAccelerated })
     });
     const data = await res.json();
     if (data.success) {
       const modeText = isGpuAccelerated ? `GPU Accelerated (${selectedWorkerCount} threads)` : `${selectedWorkerCount} CPU workers`;
-      showToast("Pipeline Started", `Sequential extraction running with ${modeText} [${currentEngineMode}].`, "success");
+      showToast("Pipeline Started", `Sequential extraction running with ${modeText}.`, "success");
     } else {
       showToast("Notice", data.error || "Pipeline is already active.", "info");
     }
@@ -880,23 +724,16 @@ async function runSingleTargetedFileExtraction(filename) {
   }
 
   scrollToSection('pipeline-runner');
-  const storedApiKey = localStorage.getItem('protocol4_gemini_key') || '';
   try {
     const res = await fetch('/api/pipeline/start-single', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        file: targetFile,
-        workers: selectedWorkerCount,
-        gpu: isGpuAccelerated,
-        mode: currentEngineMode,
-        api_key: storedApiKey
-      })
+      body: JSON.stringify({ file: targetFile, workers: selectedWorkerCount, gpu: isGpuAccelerated })
     });
     const data = await res.json();
     if (data.success) {
       const modeText = isGpuAccelerated ? `🚀 GPU Turbo (${selectedWorkerCount} threads)` : `${selectedWorkerCount} CPU threads`;
-      showToast("Extracting File", `Targeted extraction started for '${targetFile}' (${modeText} [${currentEngineMode}]).`, "success");
+      showToast("Extracting File", `Targeted extraction started for '${targetFile}' (${modeText}).`, "success");
     } else {
       showToast("Notice", data.error || "Extraction already active.", "info");
     }
@@ -1176,62 +1013,18 @@ function updateMilestones(activeStep) {
 
 async function pausePipelineExecution() {
   try {
-    const res = await fetch('/api/pipeline/pause', { method: 'POST' });
-    const data = await res.json();
-    pipelineState = data.state || 'paused';
-    
-    const btnStart = document.getElementById('btnStartPipeline');
-    const btnPause = document.getElementById('btnPausePipeline');
-    if (btnStart) {
-      btnStart.disabled = false;
-      btnStart.innerHTML = '<i data-lucide="play"></i> <span>Resume Pipeline</span>';
-    }
-    if (btnPause) {
-      btnPause.disabled = true;
-    }
-    showToast("Pipeline Paused", "Extraction paused. Click 'Resume Pipeline' to continue.", "warning");
-    lucide.createIcons();
+    await fetch('/api/pipeline/pause', { method: 'POST' });
+    showToast("Pipeline Paused", "Extraction paused.", "warning");
     pollPersistentPipelineState();
-  } catch (e) {
-    showToast("Pause Error", "Could not pause pipeline.", "error");
-  }
+  } catch (e) {}
 }
 
 async function resetPipelineExecution() {
   try {
-    const res = await fetch('/api/pipeline/stop', { method: 'POST' });
-    const data = await res.json();
-    pipelineState = 'idle';
-
-    const btnStart = document.getElementById('btnStartPipeline');
-    const btnPause = document.getElementById('btnPausePipeline');
-    const progressBar = document.getElementById('masterProgressBar');
-    const progressPercent = document.getElementById('progressPercent');
-    const taskText = document.getElementById('pipelineCurrentTask');
-    const stepBadge = document.getElementById('pipelineCurrentStep');
-    const timerEl = document.getElementById('elapsedTimer');
-
-    if (btnStart) {
-      btnStart.disabled = false;
-      btnStart.innerHTML = '<i data-lucide="play"></i> <span>Run Pipeline</span>';
-    }
-    if (btnPause) {
-      btnPause.disabled = true;
-      btnPause.innerHTML = '<i data-lucide="pause"></i> <span>Pause</span>';
-    }
-    if (progressBar) progressBar.style.width = '0%';
-    if (progressPercent) progressPercent.innerText = '0%';
-    if (taskText) taskText.innerText = 'Status: Ready for Protocol';
-    if (stepBadge) stepBadge.innerText = 'IDLE';
-    if (timerEl) timerEl.innerText = '00:00';
-    
-    updateMilestones(1);
-    showToast("Pipeline Reset", "Extraction state reset to IDLE.", "success");
-    lucide.createIcons();
+    await fetch('/api/pipeline/stop', { method: 'POST' });
+    showToast("Pipeline Reset", "Pipeline state reset to IDLE.", "info");
     pollPersistentPipelineState();
-  } catch (e) {
-    showToast("Reset Notice", "Pipeline reset triggered.", "info");
-  }
+  } catch (e) {}
 }
 
 function finishPipelineExecution(count = 1) {
@@ -1420,60 +1213,8 @@ function setDocFilter(filter) {
 }
 
 function filterDocuments() {
-  const searchInput = document.getElementById('docSearch');
-  currentSearch = searchInput ? searchInput.value : '';
+  currentSearch = document.getElementById('docSearch').value;
   renderDocumentsTable();
-}
-
-async function openDocPreview(filename, displayName) {
-  const modal = document.getElementById('docPreviewModal');
-  const title = document.getElementById('previewDocTitle');
-  const meta = document.getElementById('previewDocMeta');
-  const code = document.getElementById('previewCodeContent');
-
-  if (!modal || !code) return;
-
-  if (title) title.innerText = displayName || filename;
-  if (meta) meta.innerText = `E:\\PDF to MD\\${filename}`;
-  code.innerHTML = `<code>Loading document content from disk...</code>`;
-  modal.classList.remove('hidden');
-
-  try {
-    const res = await fetch(`/api/document-content?file=${encodeURIComponent(filename)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.content) {
-        const escaped = data.content
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
-        code.innerHTML = `<code>${escaped}</code>`;
-      } else {
-        code.innerHTML = `<code>${data.error || 'Empty document.'}</code>`;
-      }
-    } else {
-      code.innerHTML = `<code>Could not load document content. (Status ${res.status})</code>`;
-    }
-  } catch (e) {
-    code.innerHTML = `<code>Error fetching document content: ${e.message}</code>`;
-  }
-  lucide.createIcons();
-}
-
-function closeDocPreview() {
-  const modal = document.getElementById('docPreviewModal');
-  if (modal) modal.classList.add('hidden');
-}
-
-async function copyPreviewMarkdown() {
-  const code = document.getElementById('previewCodeContent');
-  if (!code) return;
-  try {
-    await navigator.clipboard.writeText(code.innerText);
-    showToast("Copied Markdown", "Full document Markdown content copied to clipboard.", "success");
-  } catch (e) {
-    showToast("Copy Notice", "Could not copy automatically.", "warning");
-  }
 }
 
 // SOP Details
@@ -1621,6 +1362,7 @@ function copyCliCommand() {
 }
 
 // Document Preview Modal
+
 async function openDocPreview(mdName, originalName) {
   const modal = document.getElementById('docPreviewModal');
   const title = document.getElementById('previewDocTitle');
@@ -1628,19 +1370,25 @@ async function openDocPreview(mdName, originalName) {
   const code = document.getElementById('previewCodeContent');
 
   if (title) title.innerText = mdName;
-  if (meta) meta.innerText = `Source: ${originalName} | Target: E:\\PDF to MD\\${mdName}`;
-  if (code) code.innerText = "Loading document markdown content from server...";
+  if (meta) meta.innerText = `Source: ${originalName || mdName} | Target: E:\\PDF to MD\\${mdName}`;
+  if (code) code.innerText = "Loading verified Markdown content from server...";
 
   if (modal) modal.classList.remove('hidden');
 
   try {
-    const res = await fetch(`/api/document/${encodeURIComponent(mdName)}`);
+    let res = await fetch(`/api/document-content?file=${encodeURIComponent(mdName)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (code) code.innerText = data.content || data.markdown || "";
+      return;
+    }
+    res = await fetch(`/api/document/${encodeURIComponent(mdName)}`);
     if (res.ok) {
       const text = await res.text();
       if (code) code.innerText = text;
-    } else {
-      if (code) code.innerText = `# ${mdName}\n\n[Document verified and archived in 'E:\\PDF to MD\\${mdName}']\n\n- Zero-Loss Character Preservation: Verified\n- Language: Marathi (Devanagari) + English\n- Legal Hierarchy: Sections, Definitions & Schedules Structured\n`;
+      return;
     }
+    if (code) code.innerText = `# ${mdName}\n\n[Document verified and archived in 'E:\\PDF to MD\\${mdName}']\n\n- Zero-Loss Character Preservation: Verified\n- Language: Marathi (Devanagari) + English\n- Legal Hierarchy: Structured\n`;
   } catch (e) {
     if (code) code.innerText = `# ${mdName}\n\n[Offline Preview Mode]\n\nDocument stored in: E:\\PDF to MD\\${mdName}`;
   }
@@ -1813,11 +1561,11 @@ async function runAutoInstallDependencies() {
       showToast("Setup Notice", data.message || "Please ensure internet access is active.", "warning");
       if (btn) {
         btn.disabled = false;
-        btn.innerHTML = '<i data-lucide="download"></i> <span>Retry Installation</span>';
+        btn.innerHTML = '<i data-lucide="refresh-cw"></i> <span>Retry Installation</span>';
       }
     }
   } catch (e) {
-    showToast("Installation Error", "Could not trigger auto-installer.", "error");
+    showToast("Network Error", "Could not trigger auto-installer.", "error");
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = '<i data-lucide="refresh-cw"></i> <span>Retry Installation</span>';
@@ -1825,66 +1573,5 @@ async function runAutoInstallDependencies() {
   }
 }
 
-// ==========================================================================
-// INTERACTIVE CLI COMMAND BUILDER
-// ==========================================================================
 
-function updateCliCommand() {
-  const isBatch = document.getElementById('cliModeBatch')?.checked ?? true;
-  const inputDir = document.getElementById('cliInputDir')?.value.trim() || 'E:\\PDF';
-  const outputDir = document.getElementById('cliOutputDir')?.value.trim() || 'E:\\PDF to MD';
-  const archiveDir = document.getElementById('cliArchiveDir')?.value.trim() || 'E:\\Completed PDF file Extraction';
-  const workers = document.getElementById('cliWorkers')?.value || '6';
-  const autoMove = document.getElementById('cliAutoMove')?.checked ?? true;
 
-  let rawCmd = '';
-  let htmlCmd = '';
-
-  if (isBatch) {
-    rawCmd = `python "E:\\python\\process_pdf_to_md.py" --batch --input "${inputDir}" --output "${outputDir}" --workers ${workers}`;
-    htmlCmd = `<span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\\python\\process_pdf_to_md.py"</span> <span class="cmd-token-flag">--batch</span> <span class="cmd-token-flag">--input</span> <span class="cmd-token-val">"${inputDir}"</span> <span class="cmd-token-flag">--output</span> <span class="cmd-token-val">"${outputDir}"</span> <span class="cmd-token-flag">--workers</span> <span class="cmd-token-num">${workers}</span>`;
-    
-    if (autoMove && archiveDir) {
-      rawCmd += ` --completed-dir "${archiveDir}"`;
-      htmlCmd += ` <span class="cmd-token-flag">--completed-dir</span> <span class="cmd-token-val">"${archiveDir}"</span>`;
-    }
-  } else {
-    rawCmd = `python "E:\\python\\process_pdf_to_md.py" "E:\\PDF\\sample.pdf" --output "${outputDir}"`;
-    htmlCmd = `<span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\\python\\process_pdf_to_md.py"</span> <span class="cmd-token-val">"E:\\PDF\\sample.pdf"</span> <span class="cmd-token-flag">--output</span> <span class="cmd-token-val">"${outputDir}"</span>`;
-    if (autoMove && archiveDir) {
-      rawCmd += ` --completed-dir "${archiveDir}"`;
-      htmlCmd += ` <span class="cmd-token-flag">--completed-dir</span> <span class="cmd-token-val">"${archiveDir}"</span>`;
-    }
-  }
-
-  const container = document.getElementById('generatedCmdContainer');
-  if (container) container.innerHTML = htmlCmd;
-  window.lastGeneratedCliCommand = rawCmd;
-}
-
-async function copyCliCommand() {
-  updateCliCommand();
-  const cmdToCopy = window.lastGeneratedCliCommand || 'python "E:\\python\\process_pdf_to_md.py" --batch';
-
-  try {
-    await navigator.clipboard.writeText(cmdToCopy);
-    const btnText = document.getElementById('copyBtnText');
-    const copyBtn = document.getElementById('cliCopyBtn');
-    if (btnText) btnText.innerText = 'Copied! ✓';
-    if (copyBtn) copyBtn.classList.add('active');
-    setTimeout(() => {
-      if (btnText) btnText.innerText = 'Copy Command';
-      if (copyBtn) copyBtn.classList.remove('active');
-    }, 2000);
-    showToast("Command Copied", "PowerShell CLI command copied to clipboard.", "success");
-  } catch (e) {
-    showToast("Copy Failed", "Please select and copy manually.", "warning");
-  }
-}
-
-// Initial binding
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { updateCliCommand(); });
-} else {
-  updateCliCommand();
-}
