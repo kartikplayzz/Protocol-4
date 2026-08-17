@@ -653,7 +653,7 @@ def convert_pdf_to_markdown(
         # Build structured Markdown
         md_sections = []
         md_sections.append(f"# {doc_title}\n")
-        md_sections.append(f"> **Source File**: `{filename}`  \n> **Engine**: Microsoft MarkItDown + Local Marathi Intelligence
+        md_sections.append(f"> **Source File**: `{filename}`  \n> **Engine**: Microsoft MarkItDown + Local Marathi Intelligence  \n> **Total Pages**: {total_pages}  \n> **Extraction Date**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n---\n")
         
         for pno in range(total_pages):
             ptext = page_results.get(pno, "").strip()
@@ -717,8 +717,7 @@ def convert_docx_to_markdown(docx_path: str, output_dir: str, completed_dir: str
         conv_res = md.convert(docx_path)
         raw_text = conv_res.text_content if hasattr(conv_res, "text_content") else str(conv_res)
         
-        header = f"# {base_name}\n\n> **Source File**: `{filename}`  \n> **Engine**: Microsoft MarkItDown + Local Marathi Intelligence
-        
+        header = f"# {base_name}\n\n> **Source File**: `{filename}`  \n> **Engine**: Microsoft MarkItDown + Local Marathi Intelligence  \n> **Extraction Date**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n---\n\n"
         cleaned_text = clean_form_blanks_and_tables(clean_scanner_watermarks(repair_marathi_ocr_and_numbered_lists(raw_text)))
         final_md = header + cleaned_text
         
