@@ -48,6 +48,7 @@ class PipelineManager:
         self.active_workers = 0
         self.milestone_step = 1
         self.logs = []
+        self.log_counter = 0
         self.stop_requested = False
         self.is_paused = False
         self.worker_thread = None
@@ -59,15 +60,17 @@ class PipelineManager:
 
     def add_log(self, tag, msg, log_type='info'):
         now_str = time.strftime("[%H:%M:%S]")
-        entry = {
-            "time": now_str,
-            "tag": tag,
-            "msg": msg,
-            "type": log_type
-        }
         with self.lock:
+            self.log_counter += 1
+            entry = {
+                "id": self.log_counter,
+                "time": now_str,
+                "tag": tag,
+                "msg": msg,
+                "type": log_type
+            }
             self.logs.append(entry)
-            if len(self.logs) > 800:
+            if len(self.logs) > 2000:
                 self.logs.pop(0)
 
     def start_batch(self, workers=6, gpu=False, mode='smart_hybrid', api_key=None):
@@ -148,6 +151,7 @@ class PipelineManager:
     def clear_logs(self):
         with self.lock:
             self.logs = []
+            self.log_counter = 0
             self.add_log("SYSTEM", "Logs cleared by user.", "info")
         return {'success': True}
 
@@ -316,13 +320,18 @@ class PipelineManager:
                 self.state = 'idle'
                 self.active_workers = 0
 
-    def get_state(self, since_log_idx=0):
+    def get_state(self, since_log_id=0):
         with self.lock:
             elapsed = self.elapsed_sec
             if self.start_time and self.state == 'running':
                 elapsed = round(time.time() - self.start_time, 1)
 
-            logs_slice = self.logs[since_log_idx:] if since_log_idx < len(self.logs) else []
+            if since_log_id == 0:
+                # Initial load: return last 150 logs
+                logs_slice = self.logs[-150:]
+            else:
+                logs_slice = [l for l in self.logs if l.get('id', 0) > since_log_id]
+
             return {
                 'state': self.state,
                 'current_task': self.current_task,
@@ -334,7 +343,8 @@ class PipelineManager:
                 'elapsed_sec': elapsed,
                 'milestone_step': self.milestone_step,
                 'logs': logs_slice,
-                'total_logs_count': len(self.logs)
+                'last_log_id': self.log_counter,
+                'total_logs_count': self.log_counter
             }
 
 GLOBAL_PIPELINE = PipelineManager()
