@@ -1,64 +1,49 @@
 # -*- coding: utf-8 -*-
 """
-Protocol-4 PyInstaller Standalone Windows Binary Compiler
-Compiles desktop_app.py and bundles backend + web assets into dist/Protocol4_Desktop/
+Standalone Desktop Application Builder with Hardware Security Suite
 """
-import os
-import sys
-import subprocess
-import shutil
+import os, subprocess, shutil
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-WEB_DIR = os.path.join(ROOT_DIR, "web")
-ASSETS_DIR = os.path.join(ROOT_DIR, "assets")
-ICON_PATH = os.path.join(ASSETS_DIR, "icon.ico")
+REPO_PATH = r"E:\Protocol-4"
+DIST_DIR = os.path.join(REPO_PATH, "dist")
+BUILD_DIR = os.path.join(REPO_PATH, "build")
 
-def build():
-    print("==================================================================")
-    print("  Compiling Protocol-4 Standalone Windows Desktop Executable...   ")
-    print("==================================================================")
+# Clean old builds
+if os.path.exists(BUILD_DIR):
+    shutil.rmtree(BUILD_DIR, ignore_errors=True)
 
-    server_file = os.path.join(ROOT_DIR, "server.py")
-    process_file = os.path.join(ROOT_DIR, "process_pdf_to_md.py")
-    bootstrap_file = os.path.join(ROOT_DIR, "bootstrap_environment.py")
-    reqs_file = os.path.join(ROOT_DIR, "requirements.txt")
-    entry_file = os.path.join(ROOT_DIR, "desktop_app.py")
+cmd = [
+    "pyinstaller",
+    "--noconfirm",
+    "--onedir",
+    "--windowed",
+    "--name=Protocol4_Desktop",
+    f"--icon={REPO_PATH}\\assets\\icon.ico",
+    f"--add-data={REPO_PATH}\\web;web",
+    f"--add-data={REPO_PATH}\\assets;assets",
+    f"--add-data={REPO_PATH}\\server.py;.",
+    f"--add-data={REPO_PATH}\\process_pdf_to_md.py;.",
+    f"--add-data={REPO_PATH}\\bootstrap_environment.py;.",
+    f"--add-data={REPO_PATH}\\security_token_engine.py;.",
+    f"--add-data={REPO_PATH}\\usb_key_generator.py;.",
+    f"--add-data={REPO_PATH}\\requirements.txt;.",
+    "--hidden-import=pymupdf",
+    "--hidden-import=fitz",
+    "--hidden-import=pytesseract",
+    "--hidden-import=docx",
+    "--hidden-import=wordninja",
+    "--hidden-import=security_token_engine",
+    "--hidden-import=usb_key_generator",
+    f"{REPO_PATH}\\desktop_app.py"
+]
 
-    cmd = [
-        sys.executable, "-m", "PyInstaller",
-        "--noconfirm",
-        "--onedir",
-        "--windowed",
-        "--name", "Protocol4_Desktop",
-        f"--add-data={WEB_DIR};web",
-        f"--add-data={server_file};.",
-        f"--add-data={process_file};.",
-        f"--add-data={bootstrap_file};.",
-        f"--add-data={reqs_file};.",
-    ]
+print("==================================================================")
+print("  Compiling Protocol-4 Standalone Executable + Security Suite... ")
+print("==================================================================")
+res = subprocess.run(cmd, cwd=REPO_PATH, capture_output=True, text=True)
+print("STDOUT:\n", res.stdout[-2000:] if len(res.stdout) > 2000 else res.stdout)
+print("Compiler Exit Code:", res.returncode)
 
-    if os.path.exists(ICON_PATH):
-        cmd.append(f"--icon={ICON_PATH}")
-        cmd.append(f"--add-data={ASSETS_DIR};assets")
-
-    hidden_imports = [
-        "pymupdf", "fitz", "cv2", "pytesseract", "PIL", "docx",
-        "markitdown", "wordninja", "numpy", "webview", "pythonnet",
-        "clr_loader", "http.server", "socketserver", "urllib.request"
-    ]
-    for hi in hidden_imports:
-        cmd.extend(["--hidden-import", hi])
-
-    cmd.append(entry_file)
-
-    print("[*] Executing PyInstaller...")
-    res = subprocess.call(cmd, cwd=ROOT_DIR)
-    if res == 0:
-        out_exe = os.path.join(ROOT_DIR, "dist", "Protocol4_Desktop", "Protocol4_Desktop.exe")
-        print("\n[+] SUCCESS! Standalone Windows Desktop App compiled to:")
-        print(f"    {out_exe}")
-    else:
-        print(f"\n[!] Build failed with exit code: {res}")
-
-if __name__ == "__main__":
-    build()
+if res.returncode == 0:
+    exe_path = os.path.join(DIST_DIR, "Protocol4_Desktop", "Protocol4_Desktop.exe")
+    print(f"\n[+] SUCCESS! Standalone Executable compiled to: {exe_path}")
