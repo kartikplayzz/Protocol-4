@@ -348,6 +348,120 @@ def ocr_page_image(pil_img: Image.Image) -> str:
         return f"[OCR Error: {e}]"
 
 
+
+def is_ocr_dotted_line_noise(token: str) -> bool:
+    """Detects if a token is an OCR hallucination of printed form dotted/blank lines."""
+    cleaned = token.strip(" \t\r\n-–—=_:.,*+#$@^~|\\/{}[]()\"'?`0123456789")
+    if not cleaned or len(cleaned) < 4:
+        return False
+        
+    # Check for repetitive Marathi characters (like टटटट, पपपप, सससस, शिशिशि, papa, etc.)
+    marathi_noise_chars = set("टपसशणरलबडमनिीुूेैोौ्ॅॉाी?\"'”’«»८२९०१२३४५६७")
+    noise_count = sum(1 for c in cleaned if c in marathi_noise_chars)
+    
+    # If 80%+ of characters are from the noise set and length >= 6
+    if len(cleaned) >= 6 and (noise_count / len(cleaned)) >= 0.8:
+        if re.search(r'(.)\1{2,}', cleaned) or re.search(r'(.{2,3})\1{2,}', cleaned):
+            return True
+        if len(cleaned) >= 12 and noise_count == len(cleaned):
+            return True
+
+    # Check for Latin dotted line noise (like nnn nnn, nanan, eee, wren, etc.)
+    if re.fullmatch(r'(?:n|nn|nnn|nnnn|nen|nanan|wren|wana|eee|enn|nena|ooo|soe|sne|poo|vert|wa|ata)+', cleaned, re.IGNORECASE):
+        return True
+
+    return False
+
+
+def clean_marathi_police_form_noise(text: str) -> str:
+    """Strips dotted line OCR artifacts, noise sequences, and standardizes Marathi police terminology."""
+    lines = text.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            cleaned_lines.append("")
+            continue
+            
+        # Check if entire line is just dotted line symbols / noise
+        if re.fullmatch(r'[\s\-–—=_\:\.\,\*\+\#\$\@\^\~\|\\\/\{\}\[\]\(\)\?0-9a-zA-Z]{5,}', stripped):
+            char_set = set(stripped.lower())
+            if char_set.issubset(set(" -–—=_:.,*+#$@^~|\\/{}[]()?0123456789newaopt")):
+                continue
+
+        # Split line into tokens and filter out noise tokens
+        tokens = line.split()
+        good_tokens = []
+        for t in tokens:
+            if is_ocr_dotted_line_noise(t):
+                continue
+            # Strip trailing/leading long dash/equal chains from tokens
+            t_cleaned = re.sub(r'[\-–—=]{3,}', '', t)
+            t_cleaned = re.sub(r'[\.]{4,}', '...', t_cleaned)
+            if t_cleaned:
+                good_tokens.append(t_cleaned)
+                
+        cleaned_line = " ".join(good_tokens)
+        if cleaned_line.strip():
+            cleaned_lines.append(cleaned_line)
+            
+    result = '\n'.join(cleaned_lines)
+    
+    # Clean standalone lines that became empty or pure symbols
+    result = re.sub(r'\n[ \t\-–—=_:\.,\*+#$@^~|\\/{}[]()]+(?=\n)', '', result)
+    
+    # Standardize Marathi police form legal terminology & OCR typos
+    # 1. Investigating Officer / Signature
+    result = re.sub(
+        r'तपासणी\s+करण[\u0900-\u097F]*\s+अधिकार[\u0900-\u097F]*\s*(?:नांव|नाव)?\s*व?\s*(?:सद्दी|सही)',
+        'तपासणी करणाऱ्या अधिकाऱ्याचे नाव व सही',
+        result
+    )
+    result = re.sub(
+        r'तपासणी\s+करण[\u0900-\u097F]*\s+अंमलदार[\u0900-\u097F]*\s*(?:नांव|नाव)?\s*व?\s*(?:सद्दी|सही)',
+        'तपासणी करणाऱ्या अंमलदाराचे नाव व सही',
+        result
+    )
+    result = re.sub(
+        r'तपासणी\s+करण[\u0900-\u097F]*\s+अधिकार[\u0900-\u097F]*',
+        'तपासणी करणाऱ्या अधिकाऱ्याचे',
+        result
+    )
+    
+    # 2. General Marathi Legal Typos
+    replacements = [
+        (r'\bकरणार्या\b', 'करणाऱ्या'),
+        (r'\bकरणार्‍या\b', 'करणाऱ्या'),
+        (r'\bअधिकार्यांच्या\b', 'अधिकाऱ्यांच्या'),
+        (r'\bअधिकार्याची\b', 'अधिकाऱ्याची'),
+        (r'\bअधिकार्याचे\b', 'अधिकाऱ्याचे'),
+        (r'\bसद्दी\b', 'सही'),
+        (r'\bनांव\b', 'नाव'),
+        (r'\bशल्यचिकीत्सक[\u0900-\u097F]*\b', lambda m: m.group(0).replace('चिकीत्सक', 'चिकित्सक')),
+        (r'\bपरिक्षेसाठी\b', 'परीक्षेसाठी'),
+        (r'\bसमाविष्ठ\b', 'समाविष्ट'),
+        (r'\bसहायभुत\b', 'सहाय्यभूत'),
+        (r'\bनैसर्गीक\b', 'नैसर्गिक'),
+        (r'\bदयावी\b', 'द्यावी'),
+        (r'\bदयावे\b', 'द्यावे'),
+        (r'\bदिसुन\b', 'दिसून'),
+        (r'\bजावुन\b', 'जाऊन'),
+        (r'\bयेवुन\b', 'येऊन'),
+        (r'\bआणुन\b', 'आणून'),
+        (r'\bकरुन\b', 'करून'),
+        (r'\bदेवुन\b', 'देवून'),
+    ]
+    for pat, rep in replacements:
+        if callable(rep):
+            result = re.sub(pat, rep, result)
+        else:
+            result = re.sub(pat, rep, result)
+        
+    result = re.sub(r'\n{3,}', '\n\n', result)
+    return result
+
+
 def convert_pdf_to_markdown(
     pdf_path: str,
     output_dir: str,
