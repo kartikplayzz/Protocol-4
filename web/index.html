@@ -29,6 +29,173 @@
 </head>
 <body class="stitch-app-body">
 
+  <!-- =========================================================================
+       MAHARASHTRA POLICE 2-FACTOR HARDWARE SECURITY GATEWAY OVERLAY
+       ========================================================================= -->
+  <div id="policeSecurityGateway" class="police-security-overlay">
+    <div class="security-card-glass">
+      
+      <!-- Top Police Shield & Header -->
+      <div class="security-shield-wrap">
+        <div class="police-emblem-glow">
+          <img src="assets/logo.png" alt="Maharashtra Police Emblem" class="security-emblem-img">
+        </div>
+        <div class="security-badge-tag">RESTRICTED LAW ENFORCEMENT ACCESS</div>
+        <h1 class="security-title">Maharashtra Police Intelligence Studio</h1>
+        <p class="security-desc">2-Factor Hardware Authentication &amp; Anti-Tamper Security Gate</p>
+      </div>
+
+      <!-- Live Anti-Tamper / Hardware Status Alert Bar -->
+      <div id="securityAlertBar" class="security-alert-bar neutral">
+        <i data-lucide="shield-alert" class="alert-icon"></i>
+        <span id="securityAlertText">Awaiting Operator Password and Hardware Dongle...</span>
+      </div>
+
+      <!-- 2-Factor Authentication Body -->
+      <div class="security-factors-grid">
+        
+        <!-- Factor 1: Operator Password -->
+        <div class="factor-box">
+          <div class="factor-header">
+            <div class="factor-number">1</div>
+            <div class="factor-title-wrap">
+              <span class="factor-label">FACTOR 1</span>
+              <h4 class="factor-title">Operator Password</h4>
+            </div>
+            <i data-lucide="lock" class="factor-icon"></i>
+          </div>
+          <div class="factor-input-wrap">
+            <input type="password" id="operatorPasswordInput" class="security-input" placeholder="Enter Operator PIN / Password" value="police2026">
+          </div>
+          <p class="factor-hint">Default Station Passcode: <code>police2026</code></p>
+        </div>
+
+        <!-- Factor 2: Physical Hardware Dongle (USB) -->
+        <div class="factor-box">
+          <div class="factor-header">
+            <div class="factor-number">2</div>
+            <div class="factor-title-wrap">
+              <span class="factor-label">FACTOR 2</span>
+              <h4 class="factor-title">Hardware USB Key</h4>
+            </div>
+            <i data-lucide="usb" class="factor-icon"></i>
+          </div>
+          
+          <div id="dongleSensorBox" class="dongle-sensor-box">
+            <div class="sensor-pulse-ring"></div>
+            <div class="sensor-info">
+              <div class="sensor-status-line">
+                <span class="sensor-dot checking" id="dongleDot"></span>
+                <strong id="dongleStatusTitle">Scanning USB Bus...</strong>
+              </div>
+              <p class="sensor-serial" id="dongleSerialText">Probing hardware storage controller</p>
+            </div>
+            <span class="security-score-pill" id="dongleScorePill">Score: --%</span>
+          </div>
+
+          <div class="factor-actions-row">
+            <button type="button" class="sec-mini-btn" onclick="checkUsbHardwareStatus()">
+              <i data-lucide="refresh-cw"></i> Re-Scan USB
+            </button>
+            <button type="button" class="sec-mini-btn accent" onclick="openKeygenModal()">
+              <i data-lucide="key"></i> Key Manager
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Unlock Action Button -->
+      <div class="security-action-footer">
+        <button type="button" id="btnUnlockSecurity" class="btn-police-unlock" onclick="attemptPoliceUnlock()">
+          <i data-lucide="unlock"></i>
+          <span>AUTHENTICATE &amp; UNLOCK STUDIO</span>
+        </button>
+        <p class="security-audit-footer">Protected by Protocol-4 Anti-Tamper &amp; Cryptographic Memory Zeroization Engine</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       ADMINISTRATIVE USB HARDWARE KEY GENERATOR & SUITABILITY ANALYZER MODAL
+       ========================================================================= -->
+  <div id="keygenModal" class="police-modal-backdrop" style="display: none;">
+    <div class="keygen-modal-card">
+      <div class="keygen-modal-header">
+        <div class="keygen-title-wrap">
+          <i data-lucide="shield-check" class="keygen-header-icon"></i>
+          <div>
+            <h3 class="keygen-modal-title">Police Hardware Key Manager &amp; Analyzer</h3>
+            <p class="keygen-modal-sub">Issue cryptographically signed .polkey tokens to USB Flash Drives</p>
+          </div>
+        </div>
+        <button type="button" class="keygen-close-btn" onclick="closeKeygenModal()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="keygen-modal-body">
+        
+        <!-- Detected USB Devices Section -->
+        <div class="keygen-section">
+          <label class="keygen-label">Select Target USB Hardware Dongle:</label>
+          <select id="keygenTargetDriveSelect" class="keygen-select" onchange="onKeygenDriveSelected()">
+            <option value="">Scanning USB drives...</option>
+          </select>
+        </div>
+
+        <!-- Selected USB Hardware Suitability Score Card -->
+        <div id="usbSuitabilityCard" class="usb-suitability-card">
+          <div class="suit-top-row">
+            <div class="suit-grade-badge" id="suitGradeBadge">GRADE B</div>
+            <div class="suit-score-wrap">
+              <span class="suit-score-val" id="suitScoreVal">72%</span>
+              <span class="suit-score-lbl">Hardware Quality</span>
+            </div>
+          </div>
+          <p class="suit-rec-text" id="suitRecText">Approved for standard department workstation deployment.</p>
+        </div>
+
+        <!-- Key Metadata Form -->
+        <div class="keygen-grid">
+          <div class="keygen-field">
+            <label class="keygen-label">Officer Name:</label>
+            <input type="text" id="keygenOfficerName" class="keygen-input" value="Insp. R. K. Patil">
+          </div>
+          <div class="keygen-field">
+            <label class="keygen-label">Badge ID:</label>
+            <input type="text" id="keygenBadgeId" class="keygen-input" value="MH-POL-8842">
+          </div>
+          <div class="keygen-field">
+            <label class="keygen-label">Station Code:</label>
+            <input type="text" id="keygenStationCode" class="keygen-input" value="MUM-HQ-01">
+          </div>
+          <div class="keygen-field">
+            <label class="keygen-label">Clearance Level:</label>
+            <select id="keygenClearance" class="keygen-select">
+              <option value="5">Level 5 (Commissioner / State Forensics)</option>
+              <option value="4" selected>Level 4 (Senior Inspector / Lead Investigator)</option>
+              <option value="3">Level 3 (Investigating Officer / Sub-Inspector)</option>
+              <option value="2">Level 2 (Station Duty Officer)</option>
+              <option value="1">Level 1 (Data Entry Operator)</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="keygen-modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeKeygenModal()">Cancel</button>
+        <button type="button" class="btn-issue-key" onclick="issueHardwareDongleKey()">
+          <i data-lucide="cpu"></i> Generate &amp; Burn Key to USB
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>
 
