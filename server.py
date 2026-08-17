@@ -227,7 +227,7 @@ class PipelineManager:
                     md_name = os.path.splitext(doc_name)[0] + '.md'
                     self.add_log("SUCCESS", f"[{file_num}/{total}] [CONVERTED] &rarr; '{md_name}' in {elapsed}s | Moved to 'E:\\Completed PDF file Extraction\\{doc_name}'", "success")
                 else:
-                    err_msg = proc.stderr.strip() or proc.stdout.strip() or "Conversion error"
+                    err_msg = (proc.stderr.strip() if proc.stderr else '') or 'Conversion error'
                     self.add_log("ERROR", f"[{file_num}/{total}] Failed '{doc_name}': {err_msg[:120]}", "error")
 
             if not self.stop_requested:
@@ -286,7 +286,7 @@ class PipelineManager:
                 self.add_log("COMPLETE", f"[CONVERTED] &rarr; Generated 'E:\\PDF to MD\\{md_name}' in {elapsed}s & moved source to Archive.", "success")
                 self.add_log("COMPLETE", "=" * 80, "info")
             else:
-                err_msg = proc.stderr.strip() or proc.stdout.strip() or "Conversion error"
+                err_msg = (proc.stderr.strip() if proc.stderr else '') or 'Conversion error'
                 self.add_log("ERROR", f"Failed to extract '{base_name}': {err_msg[:120]}", "error")
                 with self.lock:
                     self.state = 'idle'
@@ -512,6 +512,10 @@ class LegalStudioHandler(SimpleHTTPRequestHandler):
             self.handle_api_auto_install()
             return
 
+        if parsed.path == '/api/reingest-archive':
+            self.handle_api_reingest_archive()
+            return
+
         if parsed.path == '/api/markitdown/convert':
             self.handle_api_markitdown_convert()
             return
@@ -643,6 +647,37 @@ class LegalStudioHandler(SimpleHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
+
+    def handle_api_reingest_archive(self):
+        try:
+            import shutil
+            length = int(self.headers.get('Content-Length', 0))
+            payload = json.loads(self.rfile.read(length).decode('utf-8')) if length > 0 else {}
+            count_req = payload.get('count', 0)
+            
+            os.makedirs(INPUT_DIR, exist_ok=True)
+            reingested = []
+            if os.path.exists(ARCHIVE_DIR):
+                for f in sorted(os.listdir(ARCHIVE_DIR)):
+                    if f.lower().endswith(('.pdf', '.docx')) and not f.startswith('~$'):
+                        src = os.path.join(ARCHIVE_DIR, f)
+                        dst = os.path.join(INPUT_DIR, f)
+                        if not os.path.exists(dst):
+                            shutil.copy2(src, dst)
+                            reingested.append(f)
+                            if count_req > 0 and len(reingested) >= count_req:
+                                break
+                                
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'count': len(reingested), 'files': reingested}).encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
+
 
     def handle_api_delete_file(self):
         try:
