@@ -205,15 +205,24 @@ class PipelineManager:
                 with self.lock:
                     self.milestone_step = 4
 
-                cmd = [sys.executable, PYTHON_SCRIPT, doc_path]
+                cmd = [sys.executable, "-u", PYTHON_SCRIPT, doc_path]
                 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', bufsize=1)
                 for line in iter(proc.stdout.readline, ''):
                     l_clean = line.strip()
                     if not l_clean:
                         continue
-                    if "PROGRESS:" in l_clean:
-                        prog_text = l_clean.replace("PROGRESS:", "").strip()
-                        self.add_log("PROGRESS", f"[{file_num}/{total}] {doc_name}: {prog_text}", "info")
+                    if l_clean.startswith("PAGE:"):
+                        self.add_log("PAGE", f"[{file_num}/{total}] {l_clean[5:].strip()}", "info")
+                    elif l_clean.startswith("STATUS:"):
+                        self.add_log("STATUS", f"[{file_num}/{total}] {l_clean[7:].strip()}", "info")
+                    elif l_clean.startswith("NLP:"):
+                        self.add_log("NLP", f"[{file_num}/{total}] {l_clean[4:].strip()}", "info")
+                    elif l_clean.startswith("MARKITDOWN:"):
+                        self.add_log("MARKITDOWN", f"[{file_num}/{total}] {l_clean[11:].strip()}", "info")
+                    elif l_clean.startswith("PROGRESS:"):
+                        self.add_log("PROGRESS", f"[{file_num}/{total}] {l_clean[9:].strip()}", "info")
+                    elif "RuntimeWarning" not in l_clean and "ffmpeg" not in l_clean and "avconv" not in l_clean:
+                        self.add_log("EXEC", f"[{file_num}/{total}] {l_clean}", "info")
                 proc.stdout.close()
                 proc.wait()
                 elapsed = round(time.time() - start_t, 1)
@@ -261,15 +270,24 @@ class PipelineManager:
                 self.milestone_step = 4
                 self.progress_percent = 50
 
-            cmd = [sys.executable, PYTHON_SCRIPT, target_path]
+            cmd = [sys.executable, "-u", PYTHON_SCRIPT, target_path]
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', bufsize=1)
             for line in iter(proc.stdout.readline, ''):
                 l_clean = line.strip()
                 if not l_clean:
                     continue
-                if "PROGRESS:" in l_clean:
-                    prog_text = l_clean.replace("PROGRESS:", "").strip()
-                    self.add_log("PROGRESS", f"{target_filename}: {prog_text}", "info")
+                if l_clean.startswith("PAGE:"):
+                    self.add_log("PAGE", l_clean[5:].strip(), "info")
+                elif l_clean.startswith("STATUS:"):
+                    self.add_log("STATUS", l_clean[7:].strip(), "info")
+                elif l_clean.startswith("NLP:"):
+                    self.add_log("NLP", l_clean[4:].strip(), "info")
+                elif l_clean.startswith("MARKITDOWN:"):
+                    self.add_log("MARKITDOWN", l_clean[11:].strip(), "info")
+                elif l_clean.startswith("PROGRESS:"):
+                    self.add_log("PROGRESS", l_clean[9:].strip(), "info")
+                elif "RuntimeWarning" not in l_clean and "ffmpeg" not in l_clean and "avconv" not in l_clean:
+                    self.add_log("EXEC", l_clean, "info")
             proc.stdout.close()
             proc.wait()
             elapsed = round(time.time() - start_t, 1)
@@ -544,7 +562,7 @@ class LegalStudioHandler(SimpleHTTPRequestHandler):
             try:
                 length = int(self.headers.get('Content-Length', 0))
                 payload = json.loads(self.rfile.read(length).decode('utf-8')) if length > 0 else {}
-                fname = payload.get('file', '')
+                fname = payload.get('filename', '') or payload.get('file', '')
                 workers = payload.get('workers', 6)
                 gpu = payload.get('gpu', False)
                 mode = payload.get('mode', ENGINE_MODE)
