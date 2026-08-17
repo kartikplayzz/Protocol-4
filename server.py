@@ -320,17 +320,18 @@ class PipelineManager:
                 self.state = 'idle'
                 self.active_workers = 0
 
-    def get_state(self, since_log_id=0):
+    def get_state(self, since_log_id=0, since_log_idx=0, *args, **kwargs):
         with self.lock:
+            target_id = since_log_id or since_log_idx or 0
             elapsed = self.elapsed_sec
             if self.start_time and self.state == 'running':
                 elapsed = round(time.time() - self.start_time, 1)
 
-            if since_log_id == 0:
+            if target_id == 0:
                 # Initial load: return last 150 logs
                 logs_slice = self.logs[-150:]
             else:
-                logs_slice = [l for l in self.logs if l.get('id', 0) > since_log_id]
+                logs_slice = [l for l in self.logs if l.get('id', 0) > target_id]
 
             return {
                 'state': self.state,
@@ -490,8 +491,8 @@ class LegalStudioHandler(SimpleHTTPRequestHandler):
 
         if parsed.path == '/api/pipeline-state':
             query = urllib.parse.parse_qs(parsed.query)
-            log_idx = int(query.get('log_idx', ['0'])[0])
-            state = GLOBAL_PIPELINE.get_state(since_log_idx=log_idx)
+            since_val = int(query.get('since_id', query.get('log_idx', ['0']))[0])
+            state = GLOBAL_PIPELINE.get_state(since_log_id=since_val, since_log_idx=since_val)
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.end_headers()
