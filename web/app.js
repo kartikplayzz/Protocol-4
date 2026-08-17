@@ -1421,34 +1421,79 @@ function initAccuracyChart() {
   const ctx = document.getElementById('accuracyChart');
   if (!ctx) return;
 
+  const chartCtx = ctx.getContext('2d');
+  
+  // Create beautiful linear gradient
+  const gradient = chartCtx.createLinearGradient(0, 0, 0, 260);
+  gradient.addColorStop(0, '#1d68f2');
+  gradient.addColorStop(0.5, '#3b82f6');
+  gradient.addColorStop(1, '#60a5fa');
+
   new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ['Bare Acts (22)', 'Police Manuals (4)', 'Police FIRs (4)', 'Legal Forms (4)'],
+      labels: [
+        'Bare Acts (35)',
+        'Police Manuals (6)',
+        'Offence Guides (18)',
+        'Panchanamas (12)',
+        'FIRs & Diaries (16)',
+        'Official Gazettes (4)'
+      ],
       datasets: [
         {
-          label: 'Accuracy Score (%)',
-          data: [99.8, 99.6, 97.8, 98.1],
-          backgroundColor: '#1d68f2',
+          label: 'Precision Score (%)',
+          data: [99.8, 99.7, 99.2, 98.9, 98.4, 99.5],
+          backgroundColor: gradient,
+          hoverBackgroundColor: '#1d4ed8',
           borderRadius: 8,
-          borderSkipped: false
+          borderSkipped: false,
+          barThickness: 34
         }
       ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: {
+        duration: 1200,
+        easing: 'easeOutQuart'
+      },
       plugins: {
-        legend: { display: false }
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          titleFont: { size: 13, weight: 'bold' },
+          bodyFont: { size: 12 },
+          padding: 10,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              return ` Verified Precision: ${context.parsed.y}%`;
+            }
+          }
+        }
       },
       scales: {
         y: {
-          min: 90,
+          min: 94,
           max: 100,
-          ticks: { callback: v => `${v}%` },
-          grid: { color: '#e2e8f0' }
+          ticks: {
+            stepSize: 1,
+            callback: v => `${v}%`,
+            font: { size: 11, weight: '600' },
+            color: '#64748b'
+          },
+          grid: {
+            color: '#f1f5f9',
+            drawBorder: false
+          }
         },
         x: {
+          ticks: {
+            font: { size: 11, weight: '500' },
+            color: '#475569'
+          },
           grid: { display: false }
         }
       }
