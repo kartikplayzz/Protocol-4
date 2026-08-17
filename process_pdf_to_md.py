@@ -600,6 +600,7 @@ def convert_pdf_to_markdown(
         total_pages = len(doc)
         result["pages"] = total_pages
         doc_title = extract_act_metadata_title(doc, filename)
+        safe_print(f"STATUS: Found {total_pages} page(s) in '{filename}' | Processing with {ocr_workers} parallel OCR workers...")
         
         # 1. Run Microsoft MarkItDown for structured document parsing
         md_text = ""
@@ -645,8 +646,8 @@ def convert_pdf_to_markdown(
                     pno, content = future.result()
                     page_results[pno] = content
                     completed_img_pages += 1
-                    if total_img_pages >= 5 and (completed_img_pages % 5 == 0 or completed_img_pages == total_img_pages):
-                        safe_print(f"PROGRESS: Processed {completed_img_pages}/{total_img_pages} pages ({int((completed_img_pages / total_img_pages) * 100)}%)...")
+                    percent = int((completed_img_pages / total_pages) * 100)
+                    safe_print(f"PAGE: [Page {pno + 1}/{total_pages}] Extracted ({percent}%) | Engine: Tesseract 5.5 CLAHE (mar+eng)")
                     
         doc.close()
         
@@ -666,6 +667,7 @@ def convert_pdf_to_markdown(
         cleaned_md = clean_gazette_boilerplate(marginal_cleaned)
         spaced_md = repair_english_word_spacing(cleaned_md)
         repaired_md = repair_marathi_ocr_and_numbered_lists(spaced_md)
+        safe_print(f"NLP: Applying Marathi Legal NLP Sanitizer & Form Dotted-Line Suppressor...")
         wm_cleaned_md = clean_scanner_watermarks(repaired_md)
         form_cleaned_md = clean_form_blanks_and_tables(wm_cleaned_md)
         final_md = format_legal_markdown_structure(form_cleaned_md)
@@ -743,12 +745,14 @@ def convert_docx_to_markdown(docx_path: str, output_dir: str, completed_dir: str
 
 
 def safe_print(msg: str):
-    """Safely prints to stdout without raising encoding errors on Windows."""
+    """Safely prints to stdout with immediate flush for real-time terminal streaming."""
     try:
-        print(msg)
-    except UnicodeEncodeError:
+        sys.stdout.write(msg + "\n")
+        sys.stdout.flush()
+    except Exception:
         try:
-            print(msg.encode("ascii", "replace").decode("ascii"))
+            sys.stdout.buffer.write((msg + "\n").encode('utf-8', 'replace'))
+            sys.stdout.buffer.flush()
         except Exception:
             pass
 
