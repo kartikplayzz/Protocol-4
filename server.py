@@ -13,6 +13,15 @@ import subprocess
 import base64
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import urllib.parse
+from security_token_engine import (
+    police_gate,
+    scan_connected_usb_drives,
+    generate_police_dongle_token,
+    write_key_to_usb,
+    get_machine_uuid,
+    is_debugger_attached
+)
+
 
 STATIC_DIR = r"E:\Instructions\GuideBook_Web"
 INPUT_DIR = r"E:\PDF"
@@ -481,6 +490,120 @@ class LegalStudioHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         
+        
+        # =====================================================================
+        # SECURITY & HARDWARE DONGLE 2FA ENDPOINTS
+        # =====================================================================
+        if parsed.path == '/api/security/status':
+            drives = scan_connected_usb_drives()
+            has_valid_dongle = False
+            active_drive = None
+            for d in drives:
+                if d.get("has_key_file"):
+                    has_valid_dongle = True
+                    active_drive = d
+                    break
+            
+            res = {
+                "is_locked_down": police_gate.is_locked_down,
+                "is_authenticated": (police_gate.active_session_token is not None),
+                "has_valid_dongle": has_valid_dongle,
+                "active_drive": active_drive,
+                "connected_drives": drives,
+                "failed_attempts": police_gate.failed_attempts,
+                "max_attempts": police_gate.max_failed_attempts,
+                "machine_uuid": get_machine_uuid(),
+                "anti_debugger_clean": not is_debugger_attached()
+            }
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(res).encode('utf-8'))
+            return
+
+        if parsed.path == '/api/security/unlock':
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                payload = json.loads(self.rfile.read(length).decode('utf-8')) if length > 0 else {}
+                password = payload.get('password', '')
+                drive_path = payload.get('drive_path', None)
+                
+                ok, msg, details = police_gate.full_2fa_unlock(password, drive_path)
+                res = {
+                    "success": ok,
+                    "message": msg,
+                    "details": details,
+                    "is_locked_down": police_gate.is_locked_down,
+                    "session_token": police_gate.active_session_token
+                }
+                self.send_response(200 if ok else 401)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(res).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode('utf-8'))
+            return
+
+        if parsed.path == '/api/security/issue-key':
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                payload = json.loads(self.rfile.read(length).decode('utf-8')) if length > 0 else {}
+                
+                drive_letter = payload.get('drive_letter', 'E:').rstrip('\') + '\'
+                officer = payload.get('officer_name', 'Maharashtra Police Officer')
+                badge = payload.get('badge_id', 'MH-POL-0001')
+                station = payload.get('station_code', 'MUM-HQ-01')
+                clearance = int(payload.get('clearance_level', 4))
+                allow_all = bool(payload.get('allow_all_workstations', True))
+                
+                # Find matching drive serial
+                drives = scan_connected_usb_drives()
+                matched_serial = "VOL-DEFAULT"
+                for d in drives:
+                    if d["drive_letter"].upper() == drive_letter.upper().rstrip('\') + ':':
+                        matched_serial = d["hardware_serial"]
+                        break
+
+                token = generate_police_dongle_token(
+                    usb_serial=matched_serial,
+                    officer_name=officer,
+                    badge_id=badge,
+                    station_code=station,
+                    clearance_level=clearance,
+                    allow_all_workstations=allow_all
+                )
+                
+                ok, path_or_err = write_key_to_usb(drive_letter, token)
+                res = {
+                    "success": ok,
+                    "target_file": path_or_err if ok else "",
+                    "error": path_or_err if not ok else "",
+                    "token_summary": {
+                        "officer": officer,
+                        "badge": badge,
+                        "station": station,
+                        "security_score": token.get("key_security_score", 95)
+                    }
+                }
+                self.send_response(200 if ok else 400)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(res).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode('utf-8'))
+            return
+
         if parsed.path == '/api/system/check-health':
             self.handle_api_check_health()
             return
