@@ -462,6 +462,106 @@ def clean_marathi_police_form_noise(text: str) -> str:
     return result
 
 
+def clean_police_form_full(text: str) -> str:
+    """Strips dotted blank form OCR noise, scanner stamps, and formats bilingual Maharashtra Police forms."""
+    # 1. Strip scanner watermarks & artifacts
+    text = re.sub(r'(?i)[(©C@]?\s*scanned\s+with\s+[a-z0-9\s_-]+scanner[)]?', '', text)
+    text = re.sub(r'(?i)\b(?:MRW|M\.R\.W|GE|CE|OE)\b', '', text)
+    
+    # 2. Inquest Form (Pages 18-21)
+    body_part_maps = [
+        (r'a\)\s*Head[^\n]*', 'a) Head :'),
+        (r'अ\)\s*डोके[^\n]*', 'अ) डोके :'),
+        (r'b\)\s*Face[^\n]*', 'b) Face :'),
+        (r'ब\)\s*चेहरा[^\n]*', 'ब) चेहरा :'),
+        (r'[c९]\)\s*Neck[^\n]*', 'c) Neck :'),
+        (r'क\)\s*मान[^\n]*', 'क) मान :'),
+        (r'd\)\s*Chest[^\n]*', 'd) Chest :'),
+        (r'ड\)\s*छाती[^\n]*', 'ड) छाती :'),
+        (r'e\)\s*Stomac[a-z]*[^\n]*', 'e) Stomach :'),
+        (r'इ\)\s*पोट[^\n]*', 'इ) पोट :'),
+        (r'f\)\s*Right\s+Hand[^\n]*', 'f) Right Hand :'),
+        (r'ई\)\s*उजवा\s+हात[^\n]*', 'ई) उजवा हात :'),
+        (r'g\)\s*Left\s+Hand[^\n]*', 'g) Left Hand :'),
+        (r'उ\)\s*डावा\s+हात[^\n]*', 'उ) डावा हात :'),
+        (r'h\)\s*Right\s+Leg[^\n]*', 'h) Right Leg :'),
+        (r'[एऊ]\)\s*उजवा\s+पाय[^\n]*', 'ऊ) उजवा पाय :'),
+        (r'[1i]\)\s*Left\s+Leg[^\n]*', 'i) Left Leg :'),
+        (r'[ऐए]\)\s*डावा\s+पाय[^\n]*', 'ए) डावा पाय :'),
+        (r'[\{\(]?\s*j\)?\s*Private\s+part[a-z]*[^\n]*', 'j) Private parts :'),
+        (r'ओ\)\s*गुप्त\s+भाग[^\n]*', 'ओ) गुप्त भाग :'),
+        (r'k\)\s*Back[^\n]*', 'k) Back :'),
+        (r'(?:at|औ)\)\s*पाठ[^\n]*', 'औ) पाठ :'),
+    ]
+    for pat, repl in body_part_maps:
+        text = re.sub(pat, repl, text)
+
+    # General form questions
+    form_replacements = [
+        (r'प्रेतचे?\s+जखमा\s+असल्यास\s+त्याचे\s+वर्णन[^\n]*', 'प्रेतावर जखमा असल्यास त्याचे वर्णन :'),
+        (r'10\)\s*Injuries of Dead Body[^\n]*', '10) Injuries of Dead Body Caused By Accidental/Violence :'),
+        (r'प्रेताचे\s+अंगावरील\s+जखमा[^\n]*', 'प्रेताचे अंगावरील जखमा अपघाताच्या/ दंग्यातील/ इतरांनी केल्यामुळे झाल्या काय :'),
+        (r'11\)\s*Weapon\s*/\s*Means[^\n]*', '11) Weapon / Means (if any) :'),
+        (r'जखमा\s+केलेल्या\s+हत्याराचे[^\n]*', 'जखमा केलेल्या हत्याराचे/ साधनाचे वर्णन :'),
+        (r'जखमा\s+केलेल्या[^\n]*', 'जखमा केलेल्या हत्याराचे/ साधनाचे वर्णन :'),
+        (r'12\)\s*Dead Body Cool\s*/\s*Warm[^\n]*', '12) Dead Body Cool / Warm :'),
+        (r'प्रेत\s+थंड\s+आहे/\s*गरम\s+आहे[^\n]*', 'प्रेत थंड आहे/ गरम आहे :'),
+        (r'प्रेताची\s+स्थिती\s*\(?विष\s+प्राशन[^\n]*', 'प्रेताची स्थिती (विष प्राशन/ विष प्रयोग झाला असल्यास) :'),
+        (r'14\)\s*\(a\)\s*Finger Print[^\n]*', '14) (a) Finger Print taken / Not taken by Doctor (Reason) :'),
+        (r'(?:ep\s+Co\s+)?प्रेताचे\s+डॉक्ट[^\n]*बोटा[^\n]*', 'प्रेताचे डॉक्टरांकडून बोटांचे ठसे घेतले/ नाही कारण :'),
+        (r'\(b\)\s*Photo taken[^\n]*', '(b) Photo taken / not taken reason (In case of an Unidentified Dead Body) :'),
+        (r'अनोळखी\s+प्रेताचे\s+फोटो[^\n]*', 'अनोळखी प्रेताचे फोटो घेतले/ नाही कारण :'),
+        (r'प्रेत\s*\(पोस्ट\s+मार्टम\)\s*शल्यचिकित्सेकरीता[^\n]*', 'प्रेत (पोस्ट मार्टम) शल्यचिकित्सेकरीता पाठविले/ नाही कारण :'),
+        (r'\(a\)\s*At which Hospital[^\n]*', '(a) At which Hospital Dead Body sent to P.M. :'),
+        (r'कोणत्या\s+दवाखान्यात\s+प्रेत\s+पोस्ट\s+मार्टम[^\n]*', 'कोणत्या दवाखान्यात प्रेत पोस्ट मार्टम करीता पाठविले :'),
+        (r'\(b\)\s*With whom[^\n]*', '(b) With whom (Name, B.No. and Police Station) :'),
+        (r'कोणा\s+बरोबर\s+पाठविले[^\n]*', 'कोणा बरोबर पाठविले (नाव व बक्कल नंबर) :'),
+        (r'नाव\s+व?\s*बक्कल\s+नंबर[^\n]*', 'नाव व बक्कल नंबर : ...............\n'),
+        (r'16\)\s*Opinion of Panchas[^\n]*', '16) Opinion of Panchas and Police about Death :'),
+        (r'पंच\s+व\s+पोलीसांचा\s+मृताविषयी\s+अभिप्राय[^\n]*', 'पंच व पोलीसांचा मृताविषयी अभिप्राय :'),
+        (r'17\)\s*More information[^\n]*', '17) More information (if any) :'),
+        (r'अधिक\s+माहिती\s+असल्यास[^\n]*', 'अधिक माहिती असल्यास :'),
+        (r'18\)\s*Date and Time of panchanama[^\n]*', '18) Date and Time of panchanama :'),
+        (r'पंचनामा\s+केल्याची\s+दिनांक[^\n]*', 'पंचनामा केल्याची दिनांक : ............... वेळ : ............... ते ...............'),
+        (r'19\)\s*Name of Panchas and Signature[^\n]*', '19) Name of Panchas and Signature :'),
+        (r'पंचनामा\s+करणा[^\n]*पंचांची\s+नावे[^\n]*', 'पंचनामा करणाऱ्या पंचांची नावे व सह्या :'),
+        (r'Signature of Investigat[a-zA-Z\s]+', 'Signature of Investigating Officer'),
+        (r'तपासणी\s+करणा[^\n]*अधिकार[^\n]*नाव[^\n]*', 'तपासणी करणाऱ्या अधिकाऱ्याचे नाव व सही'),
+    ]
+    for pat, repl in form_replacements:
+        text = re.sub(pat, repl, text)
+
+    # 3. Clean line-by-line noise
+    lines = text.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            cleaned_lines.append("")
+            continue
+            
+        # Drop standalone noise words
+        if stripped in ['GE', 'CE', 'OE', 'MRW', 'M.R.W', 'a', 'ro', 'प >', '१', '२', '३', '| ne a er', 'forever sé)']:
+            continue
+            
+        # Drop random disconnected characters from dotted lines
+        if re.fullmatch(r'(?:[क-हa-zA-Z0-9\s\.\-]{1,3}\s+){3,}[क-हa-zA-Z0-9\s\.\-]{1,3}', stripped):
+            if not any(w in line for w in ['अ.', 'क्र.', 'नाव', 'दिनांक', 'वेळ', 'पत्ता', 'पोलीस', 'कलम', 'फॉर्म']):
+                continue
+                
+        # Drop lines with meaningless gibberish
+        if re.search(r'कहता कड क कणा हात|लात डा त पपष कश|केल्यामुळे झाल्या हाड डळ|कह सा या त्वा का सा|पप--पममममपलपस|पलॅलॅलसलललिललललस्सट्श्', stripped):
+            continue
+
+        cleaned_lines.append(line)
+        
+    result = '\n'.join(cleaned_lines)
+    result = re.sub(r'Signature of Investigating OfficerOfficer', 'Signature of Investigating Officer', result)
+    result = re.sub(r'\n{3,}', '\n\n', result)
+    return result
+
+
 def convert_pdf_to_markdown(
     pdf_path: str,
     output_dir: str,
