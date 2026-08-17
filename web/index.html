@@ -14,10 +14,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   
   <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="lucide.min.js"></script>
   
   <!-- Chart.js for Analytics -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="chart.min.js"></script>
   
   <!-- Magic UI Text Highlighter Engine (RoughNotation) -->
   <script src="rough-notation.iife.js"></script>
@@ -42,16 +42,13 @@
       <div class="stitch-user-profile">
         <div class="profile-avatar-wrap">
           <div class="profile-avatar">
-            <svg class="police-emblem-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              <path d="m9 12 2 2 4-4"></path>
-            </svg>
+            <i data-lucide="scale"></i>
           </div>
-          <span class="avatar-status-dot" title="Local System Active"></span>
+          <span class="avatar-status-dot"></span>
         </div>
         <div class="profile-info">
-          <h2 class="profile-name">Maharashtra Police</h2>
-          <span class="profile-role">Legal Document Studio</span>
+          <h2 class="profile-name">Legal AI Studio</h2>
+          <span class="profile-role">Maharashtra Police Pipeline</span>
         </div>
         <button class="sidebar-toggle-btn mobile-only" onclick="toggleSidebar()" title="Close Sidebar">
           <i data-lucide="x"></i>
@@ -271,14 +268,19 @@
                   <i data-lucide="cpu" style="width:14px;height:14px;color:#1d68f2;"></i> Parallel Workers:
                 </label>
                 <select id="parallelWorkersSelect" class="worker-dropdown-select" onchange="onWorkerCountChange(this.value)">
-                  <option value="4">4 CPU Workers</option>
-                  <option value="6" selected>6 CPU Workers (Recommended)</option>
-                  <option value="8">8 CPU Workers (High Performance)</option>
-                  <option value="12">12 CPU Workers (Multi-Core Max)</option>
+                  <optgroup label="💻 CPU Multi-Threading">
+                    <option value="4">4 CPU Workers</option>
+                    <option value="6" selected>6 CPU Workers (Recommended)</option>
+                    <option value="8">8 CPU Workers (High Performance)</option>
+                    <option value="12">12 CPU Workers (Multi-Core Max)</option>
+                  </optgroup>
+                  <optgroup label="🚀 GPU Hardware Acceleration">
+                    <option value="gpu-6">🚀 GPU Accelerated (OpenCL + 6 Threads)</option>
+                    <option value="gpu-8">⚡ GPU Turbo (OpenCL + 8 Threads)</option>
+                  </optgroup>
                 </select>
               </div>
 
-              <!-- Main Execution Controls -->
               <button class="stitch-btn-primary" id="btnStartPipeline" onclick="initiateExtractionProtocol()">
                 <i data-lucide="play"></i> <span>Run Pipeline</span>
               </button>
@@ -357,80 +359,35 @@
               </div>
             </div>
 
-            <!-- Magic UI Terminal Window (Height: 600px) -->
-            <div class="magic-terminal-window" id="magicTerminal">
-              <div class="magic-terminal-header">
-                <div class="magic-terminal-dots">
-                  <span class="m-dot m-dot-red" title="Close"></span>
-                  <span class="m-dot m-dot-yellow" title="Minimize"></span>
-                  <span class="m-dot m-dot-green" title="Expand"></span>
+            <!-- 600px Height Terminal Output -->
+            <div class="stitch-terminal">
+              <div class="terminal-top">
+                <div class="term-dots">
+                  <span class="dot red"></span>
+                  <span class="dot yellow"></span>
+                  <span class="dot green"></span>
+                  <span class="term-name">Live Pipeline Output Stream &bull; Extraction Protocol</span>
                 </div>
-                <div class="magic-terminal-title">
-                  <i data-lucide="terminal" class="term-icon"></i>
-                  <span class="term-user">protocol-4@legal-studio</span>
-                  <span class="term-sep">:</span>
-                  <span class="term-path">~/pipeline-stream</span>
-                  <span class="magic-term-status-chip live" id="termLiveStatus">
-                    <span class="chip-pulse"></span> LIVE STREAM
-                  </span>
-                </div>
-                <div class="magic-terminal-actions">
-                  <button class="m-term-btn active" id="btnAutoScroll" onclick="toggleAutoScroll()" title="Toggle Auto-Scroll">
-                    <i data-lucide="arrow-down-to-line"></i> <span id="autoScrollLabel">Auto-Scroll: ON</span>
-                  </button>
-                  <button class="m-term-btn" onclick="clearTerminalLogs()" title="Clear Terminal Output">
-                    <i data-lucide="trash-2"></i> <span>Clear</span>
-                  </button>
-                  <button class="m-term-btn" id="btnCopyTerm" onclick="copyTerminalLogs()" title="Copy Logs">
-                    <i data-lucide="copy" id="iconCopyTerm"></i> <span id="labelCopyTerm">Copy</span>
-                  </button>
-                  <button class="m-term-btn m-term-expand" onclick="toggleTerminalFullscreen()" title="Toggle Fullscreen">
-                    <i data-lucide="maximize-2" id="iconFullscreen"></i>
-                  </button>
+                <div class="term-btns">
+                  <button class="btn-term-action" onclick="clearTerminalLogs()"><i data-lucide="trash-2"></i> Clear</button>
+                  <button class="btn-term-action" onclick="copyTerminalLogs()"><i data-lucide="copy"></i> Copy</button>
                 </div>
               </div>
-
-              <!-- Magic Terminal Body -->
-              <div class="magic-terminal-body">
-                <div class="magic-terminal-scanlines"></div>
-                <div class="magic-terminal-glow"></div>
-
-                <!-- Interactive Command Line Prompt -->
-                <div class="magic-terminal-prompt-row">
-                  <span class="prompt-user">kartik@protocol4</span>
-                  <span class="prompt-colon">:</span>
-                  <span class="prompt-dir">/legal-engine</span>
-                  <span class="prompt-char">$</span>
-                  <span class="prompt-cmd">python process_pdf_to_md.py --ingest "E:\PDF" --smart-hybrid --gpu</span>
+              <div class="terminal-log-scroll" id="terminalLogsContainer">
+                <div class="log-line info">
+                  <span class="l-time">[12:55:00]</span>
+                  <span class="l-tag tag-info">INFO</span>
+                  <span class="l-msg">Extraction Protocol initialized. Queue bound strictly to 'E:\PDF\'.</span>
                 </div>
-
-                <!-- Log Stream Scroll Area -->
-                <div class="magic-terminal-scroll" id="terminalLogsContainer">
-                  <div class="log-line info">
-                    <span class="l-idx">#001</span>
-                    <span class="l-time">[01:10:39]</span>
-                    <span class="l-tag tag-info">INFO</span>
-                    <span class="l-msg">Extraction Protocol initialized. Queue bound strictly to 'E:\PDF\'.</span>
-                  </div>
-                  <div class="log-line info">
-                    <span class="l-idx">#002</span>
-                    <span class="l-time">[01:10:39]</span>
-                    <span class="l-tag tag-info">ENV</span>
-                    <span class="l-msg">Tesseract 5.5 path: C:\Users\Kartikplayzz\AppData\Local\Programs\Tesseract-OCR\tesseract.exe</span>
-                  </div>
-                  <div class="log-line success">
-                    <span class="l-idx">#003</span>
-                    <span class="l-time">[01:10:39]</span>
-                    <span class="l-tag tag-success">READY</span>
-                    <span class="l-msg">Language models active: mar (Marathi), eng (English), osd. Ready for processing.</span>
-                  </div>
+                <div class="log-line info">
+                  <span class="l-time">[12:55:01]</span>
+                  <span class="l-tag tag-info">ENV</span>
+                  <span class="l-msg">Tesseract 5.5 path: C:\Users\Kartikplayzz\AppData\Local\Programs\Tesseract-OCR\tesseract.exe</span>
                 </div>
-
-                <!-- Footer Terminal Prompt -->
-                <div class="magic-terminal-footer-prompt">
-                  <span class="prompt-char-tail">&gt;</span>
-                  <span class="terminal-running-hint" id="terminalRunningHint">Stream active &bull; Listening to background worker...</span>
-                  <span class="magic-terminal-cursor"></span>
+                <div class="log-line success">
+                  <span class="l-time">[12:55:01]</span>
+                  <span class="l-tag tag-success">READY</span>
+                  <span class="l-msg">Language models active: mar (Marathi), eng (English), osd. Ready for single/multi file processing.</span>
                 </div>
               </div>
             </div>
@@ -571,10 +528,10 @@
               <div class="mindmap-cards-grid">
                 <!-- Branch 1 -->
                 <div class="mm-branch-card" id="mmBranch1">
-                  <div class="mm-header"><i data-lucide="hard-drive"></i> 1. Ingestion &amp; Classifier</div>
+                  <div class="mm-header"><i data-lucide="hard-drive"></i> 1. Ingestion &amp; Office Engine</div>
                   <div class="mm-items">
                     <div class="mm-item"><span class="magic-highlight in-view">Strict Ingestion: <code>E:\PDF\</code> ONLY</span></div>
-                    <div class="mm-item">Smart Format Classifier (<code>.docx</code> / <code>.pdf</code>)</div>
+                    <div class="mm-item">Office Engine: <span class="magic-highlight in-view"><strong>Microsoft MarkItDown</strong> (<code>.docx/.pdf</code>)</span></div>
                     <div class="mm-item">Ignore Temp Lock Files: <code>~$*.docx</code></div>
                     <div class="mm-item"><span class="magic-brush-highlight in-view">Zero Archive Re-Scanning</span></div>
                   </div>
@@ -582,56 +539,58 @@
 
                 <!-- Branch 2 -->
                 <div class="mm-branch-card" id="mmBranch2">
-                  <div class="mm-header"><i data-lucide="zap"></i> 2. Lane A: Local Fast Stream</div>
+                  <div class="mm-header"><i data-lucide="cpu"></i> 2. Parallel Dispatcher</div>
                   <div class="mm-items">
-                    <div class="mm-item"><strong>Microsoft MarkItDown:</strong> Word Tables &amp; Headings</div>
-                    <div class="mm-item"><strong>PyMuPDF:</strong> Native Vector Stream Parser</div>
-                    <div class="mm-item"><span class="magic-highlight in-view">100% Free, Instant &amp; Offline</span></div>
-                    <div class="mm-item">Direct Devanagari Unicode Stream</div>
+                    <div class="mm-item"><span class="magic-highlight in-view">Configurable CPU Workers (4 / 6 / 8 / 12)</span></div>
+                    <div class="mm-item">ThreadPoolExecutor Architecture</div>
+                    <div class="mm-item">Page-Level Parallelization</div>
+                    <div class="mm-item">Persistent Background Daemon</div>
                   </div>
                 </div>
 
                 <!-- Branch 3 -->
                 <div class="mm-branch-card" id="mmBranch3">
-                  <div class="mm-header"><i data-lucide="sparkles"></i> 3. Lane B: Cloud AI Vision</div>
+                  <div class="mm-header"><i data-lucide="eye"></i> 3. Extraction, Vision &amp; MarkItDown</div>
                   <div class="mm-items">
-                    <div class="mm-item"><strong>Google Gemini Vision API:</strong> Multimodal AI</div>
-                    <div class="mm-item"><span class="magic-highlight in-view">Zero Dotted-Line Symbol Loops</span></div>
-                    <div class="mm-item">Native Marathi Legal Understanding</div>
-                    <div class="mm-item">Complex Table &amp; Form Reconstruction</div>
+                    <div class="mm-item"><strong>Microsoft MarkItDown:</strong> Office &amp; Table Structure</div>
+                    <div class="mm-item"><strong>Digital Text:</strong> PyMuPDF Stream Parsing</div>
+                    <div class="mm-item"><strong>Scanned / CCTNS:</strong> <span class="magic-highlight in-view">200 / 300 DPI Raster</span></div>
+                    <div class="mm-item">OpenCV Bilateral &amp; CLAHE Filtering</div>
+                    <div class="mm-item">Tesseract 5.5 OCR (<span class="magic-highlight in-view"><code>mar+eng</code></span>)</div>
                   </div>
                 </div>
 
                 <!-- Branch 4 -->
                 <div class="mm-branch-card" id="mmBranch4">
-                  <div class="mm-header"><i data-lucide="cpu"></i> 4. Lane C: Local CV &amp; OCR</div>
+                  <div class="mm-header"><i data-lucide="filter"></i> 4. Semantic Cleaning &amp; Legal NLP</div>
                   <div class="mm-items">
-                    <div class="mm-item"><strong>200 / 300 DPI:</strong> PyMuPDF Rasterizer</div>
-                    <div class="mm-item"><strong>OpenCV:</strong> Bilateral Filter &amp; CLAHE Contrast</div>
-                    <div class="mm-item"><span class="magic-highlight in-view">OpenCL GPU Hardware Offload</span></div>
-                    <div class="mm-item">Tesseract 5.5 OCR (<code>mar+eng</code>) Air-Gapped</div>
+                    <div class="mm-item"><span class="magic-highlight in-view">Marathi OCR Glyph &amp; Compound Word Repair</span></div>
+                    <div class="mm-item"><span class="magic-brush-highlight in-view">Gazette Boilerplate &amp; Marginal Notes Stripper</span></div>
+                    <div class="mm-item">Form Dotted-Line Artifact Suppressor</div>
+                    <div class="mm-item">WordNinja English Word Repair</div>
+                    <div class="mm-item">Devanagari Unicode Preserved</div>
                   </div>
                 </div>
 
                 <!-- Branch 5 -->
                 <div class="mm-branch-card" id="mmBranch5">
-                  <div class="mm-header"><i data-lucide="filter"></i> 5. Marathi Legal NLP</div>
+                  <div class="mm-header"><i data-lucide="folder-check"></i> 5. Storage &amp; Archive</div>
                   <div class="mm-items">
-                    <div class="mm-item"><span class="magic-highlight in-view">Form Dotted-Line Suppressor (_______)</span></div>
-                    <div class="mm-item">Marathi Glyph &amp; Typo Fixer (<code>किंवा</code>, <code>नोंदविणाऱ्या</code>)</div>
-                    <div class="mm-item">Compound Word Repair (<code>खाडा-खोड</code>)</div>
-                    <div class="mm-item">WordNinja Statutory English Recovery</div>
+                    <div class="mm-item">UTF-8 Markdown &rarr; <span class="magic-highlight in-view"><code>E:\PDF to MD\</code></span></div>
+                    <div class="mm-item">Auto-Move &rarr; <span class="magic-highlight in-view"><code>E:\Completed PDF file Extraction\</code></span></div>
+                    <div class="mm-item">Zero-Loss Verification Pass</div>
+                    <div class="mm-item">Clean Ingestion Reset</div>
                   </div>
                 </div>
 
                 <!-- Branch 6 -->
                 <div class="mm-branch-card" id="mmBranch6">
-                  <div class="mm-header"><i data-lucide="folder-check"></i> 6. Storage &amp; GitHub Sync</div>
+                  <div class="mm-header"><i data-lucide="brain"></i> 6. Legal Intelligence</div>
                   <div class="mm-items">
-                    <div class="mm-item">UTF-8 Markdown &rarr; <span class="magic-highlight in-view"><code>E:\PDF to MD\</code></span></div>
-                    <div class="mm-item">Auto-Move &rarr; <span class="magic-highlight in-view"><code>E:\Completed PDF file Extraction\</code></span></div>
-                    <div class="mm-item">GitHub Repository: <span class="magic-highlight in-view"><code>kartikplayzz/Protocol-4</code></span></div>
-                    <div class="mm-item">1-Click <code>install_and_run.bat</code> Launcher</div>
+                    <div class="mm-item"><span class="magic-highlight in-view">BNS 2023 / BNSS 173</span> Cross-Ref</div>
+                    <div class="mm-item">Police Manual Procedural Rules</div>
+                    <div class="mm-item">Standardized Panchanama Forms</div>
+                    <div class="mm-item">Ready for AI Legal Search &amp; RAG</div>
                   </div>
                 </div>
               </div>
@@ -860,47 +819,22 @@
               </div>
             </div>
 
-            <!-- Magic UI CLI Studio Terminal Card -->
-            <div class="magic-terminal-window cli-magic-window">
-              <div class="magic-terminal-header">
-                <div class="magic-terminal-dots">
-                  <span class="m-dot m-dot-red"></span>
-                  <span class="m-dot m-dot-yellow"></span>
-                  <span class="m-dot m-dot-green"></span>
-                </div>
-                <div class="magic-terminal-title">
-                  <i data-lucide="terminal" class="term-icon"></i>
-                  <span class="term-user">PowerShell Command Generator</span>
-                  <span class="term-sep">&bull;</span>
-                  <span class="term-path">pwsh 7.4</span>
-                </div>
-                <div class="magic-terminal-actions">
-                  <button class="m-term-btn" id="cliCopyBtn" onclick="copyCliCommand()" title="Copy Generated PowerShell Command">
-                    <i data-lucide="copy" id="cliCopyIcon"></i> <span id="copyBtnText">Copy Command</span>
-                  </button>
-                </div>
+            <!-- Terminal Generated Output -->
+            <div class="stitch-terminal-card">
+              <div class="terminal-top">
+                <span class="term-name">PowerShell Command Generator</span>
+                <button class="stitch-btn-primary btn-sm" onclick="copyCliCommand()">
+                  <i data-lucide="copy"></i> <span id="copyBtnText">Copy Command</span>
+                </button>
               </div>
-
-              <!-- CLI Terminal Body -->
-              <div class="magic-terminal-body cli-term-body">
-                <div class="magic-terminal-scanlines"></div>
-                <div class="magic-terminal-glow"></div>
-
-                <div class="cli-cmd-display-box">
-                  <div class="cli-cmd-prompt-prefix">
-                    <span class="ps-prompt-user">PS C:\&gt;</span>
-                  </div>
-                  <div class="cli-cmd-code-text" id="generatedCmdContainer">
-                    <span class="cmd-token-py">python</span> <span class="cmd-token-script">"E:\python\process_pdf_to_md.py"</span> <span class="cmd-token-flag">--batch</span> <span class="cmd-token-flag">--input</span> <span class="cmd-token-val">"E:\PDF"</span> <span class="cmd-token-flag">--output</span> <span class="cmd-token-val">"E:\PDF to MD"</span> <span class="cmd-token-flag">--workers</span> <span class="cmd-token-num">6</span> <span class="cmd-token-flag">--completed-dir</span> <span class="cmd-token-val">"E:\Completed PDF file Extraction"</span>
-                  </div>
-                </div>
-
-                <div class="cli-terminal-log-preview">
-                  <div class="cli-preview-line"><span class="l-tag tag-info">INFO</span> Initializing High-Performance Hybrid OCR Engine...</div>
-                  <div class="cli-preview-line"><span class="l-tag tag-success">READY</span> Language Models Active: <code>mar (Marathi)</code> + <code>eng (English)</code></div>
-                  <div class="cli-preview-line"><span class="l-tag tag-hardware">GPU</span> Silent Hardware Auto-Detector: Multi-Core / OpenCL Matrix</div>
-                  <div class="cli-preview-divider">============================================================</div>
-                  <div class="cli-preview-line text-blue">Ready to process incoming .pdf and .docx documents strictly in E:\PDF\</div>
+              <div class="terminal-log-scroll">
+                <div class="term-cmd-line">PS C:\&gt; <span class="cmd-highlight" id="generatedCmd">python "E:\python\process_pdf_to_md.py" --batch</span></div>
+                <div class="term-help-text">
+                  <p>[INFO] Initializing High-Performance Hybrid OCR Engine...</p>
+                  <p>[INFO] Language Models Active: mar (Marathi) + eng (English)</p>
+                  <p>[INFO] Parallel Workers: 6 CPU Threads</p>
+                  <p class="text-blue">============================================================</p>
+                  <p>Ready to process incoming .pdf and .docx documents in E:\PDF\</p>
                 </div>
               </div>
             </div>
@@ -1028,8 +962,6 @@
       </div>
     </div>
   </div>
-
-
 
   <!-- System Health & Portable Machine Setup Modal (Shown ONLY when dependencies are missing on another PC) -->
   <div id="systemHealthModal" class="modal-backdrop hidden">
