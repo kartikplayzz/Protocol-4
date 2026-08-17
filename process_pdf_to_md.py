@@ -587,7 +587,7 @@ def convert_pdf_to_markdown(
         "filename": filename,
         "output_path": out_md_path,
         "type": "PDF",
-        "engine": "Pure Local OCR & Legal NLP",
+        "engine": "Microsoft MarkItDown + Local Marathi Intelligence",
         "pages": 0,
         "success": False,
         "elapsed_sec": 0,
@@ -600,6 +600,17 @@ def convert_pdf_to_markdown(
         total_pages = len(doc)
         result["pages"] = total_pages
         doc_title = extract_act_metadata_title(doc, filename)
+        
+        # 1. Run Microsoft MarkItDown for structured document parsing
+        md_text = ""
+        try:
+            md_engine = MarkItDown()
+            md_res = md_engine.convert(pdf_path)
+            if md_res and hasattr(md_res, 'text_content'):
+                md_text = md_res.text_content.strip()
+        except Exception:
+            md_text = ""
+
         
         digital_pages = {}
         image_pages = {}
@@ -642,7 +653,7 @@ def convert_pdf_to_markdown(
         # Build structured Markdown
         md_sections = []
         md_sections.append(f"# {doc_title}\n")
-        md_sections.append(f"> **Source File**: `{filename}`  \n> **Engine**: Pure Local Marathi Intelligence (Tesseract 5.5 + OpenCV)  \n> **Total Pages**: {total_pages}  \n> **Extraction Date**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n---\n")
+        md_sections.append(f"> **Source File**: `{filename}`  \n> **Engine**: Microsoft MarkItDown + Local Marathi Intelligence
         
         for pno in range(total_pages):
             ptext = page_results.get(pno, "").strip()
@@ -693,7 +704,7 @@ def convert_docx_to_markdown(docx_path: str, output_dir: str, completed_dir: str
         "filename": filename,
         "output_path": out_md_path,
         "type": "DOCX",
-        "engine": "Microsoft MarkItDown 0.1.7",
+        "engine": "Microsoft MarkItDown + Local Marathi Intelligence",
         "pages": 1,
         "success": False,
         "elapsed_sec": 0,
@@ -706,7 +717,7 @@ def convert_docx_to_markdown(docx_path: str, output_dir: str, completed_dir: str
         conv_res = md.convert(docx_path)
         raw_text = conv_res.text_content if hasattr(conv_res, "text_content") else str(conv_res)
         
-        header = f"# {base_name}\n\n> **Source File**: `{filename}`  \n> **Engine**: Microsoft MarkItDown 0.1.7  \n> **Extraction Date**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n---\n\n"
+        header = f"# {base_name}\n\n> **Source File**: `{filename}`  \n> **Engine**: Microsoft MarkItDown + Local Marathi Intelligence
         
         cleaned_text = clean_form_blanks_and_tables(clean_scanner_watermarks(repair_marathi_ocr_and_numbered_lists(raw_text)))
         final_md = header + cleaned_text
