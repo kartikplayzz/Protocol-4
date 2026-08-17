@@ -575,7 +575,7 @@ let knownLogIndex = 0;
 
 async function pollPersistentPipelineState() {
   try {
-    const res = await fetch(`/api/pipeline-state?log_idx=${knownLogIndex}`);
+    const res = await fetch(`/api/pipeline-state?since_id=${knownLogIndex}&log_idx=${knownLogIndex}`);
     if (!res.ok) return;
     const data = await res.json();
 
@@ -584,7 +584,11 @@ async function pollPersistentPipelineState() {
       data.logs.forEach(log => {
         renderServerTerminalLog(log);
       });
-      knownLogIndex = data.total_logs_count;
+      if (data.last_log_id !== undefined) {
+        knownLogIndex = data.last_log_id;
+      } else if (data.total_logs_count !== undefined) {
+        knownLogIndex = data.total_logs_count;
+      }
     }
 
     pipelineState = data.state;
