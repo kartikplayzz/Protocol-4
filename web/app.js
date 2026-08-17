@@ -1629,3 +1629,204 @@ async function runAutoInstallDependencies() {
 
 
 
+
+
+// =============================================================================
+// MAHARASHTRA POLICE 2-FACTOR HARDWARE SECURITY GATEWAY SCRIPT
+// =============================================================================
+
+let connectedUsbDrives = [];
+let isStudioUnlocked = false;
+
+async function checkUsbHardwareStatus() {
+  const dot = document.getElementById('dongleDot');
+  const title = document.getElementById('dongleStatusTitle');
+  const serial = document.getElementById('dongleSerialText');
+  const pill = document.getElementById('dongleScorePill');
+  const alertBar = document.getElementById('securityAlertBar');
+  const alertText = document.getElementById('securityAlertText');
+
+  if (dot) {
+    dot.className = 'sensor-dot checking';
+    title.textContent = 'Scanning USB Hardware Bus...';
+  }
+
+  try {
+    const res = await fetch('/api/security/status');
+    const data = await res.json();
+    connectedUsbDrives = data.connected_drives || [];
+
+    if (data.is_locked_down) {
+      if (alertBar) alertBar.className = 'security-alert-bar danger';
+      if (alertText) alertText.textContent = 'CRITICAL: Anti-Tamper Lockdown Active. Re-authorization required.';
+      if (dot) dot.className = 'sensor-dot invalid';
+      return;
+    }
+
+    if (data.has_valid_dongle && data.active_drive) {
+      const d = data.active_drive;
+      if (dot) dot.className = 'sensor-dot valid';
+      if (title) title.textContent = `Hardware Key Detected (${d.drive_letter})`;
+      if (serial) serial.textContent = `Serial: ${d.hardware_serial} | ${d.model}`;
+      if (pill) pill.textContent = `Score: ${d.suitability.score_percent}% (${d.suitability.grade.split(' ')[0]})`;
+      if (alertBar) alertBar.className = 'security-alert-bar success';
+      if (alertText) alertText.textContent = `Physical Key Verified: ${d.drive_letter} (${d.suitability.grade})`;
+    } else if (connectedUsbDrives.length > 0) {
+      const d = connectedUsbDrives[0];
+      if (dot) dot.className = 'sensor-dot invalid';
+      if (title) title.textContent = `USB Attached: No Key Token (${d.drive_letter})`;
+      if (serial) serial.textContent = `Serial: ${d.hardware_serial}`;
+      if (pill) pill.textContent = `Score: ${d.suitability.score_percent}%`;
+      if (alertBar) alertBar.className = 'security-alert-bar neutral';
+      if (alertText) alertText.textContent = `USB detected on ${d.drive_letter}. Click 'Key Manager' to generate key token.`;
+    } else {
+      if (dot) dot.className = 'sensor-dot invalid';
+      if (title) title.textContent = 'No USB Security Dongle Attached';
+      if (serial) serial.textContent = 'Insert authorized Maharashtra Police USB Dongle';
+      if (pill) pill.textContent = 'Score: 0%';
+      if (alertBar) alertBar.className = 'security-alert-bar neutral';
+      if (alertText) alertText.textContent = 'Please insert physical USB security key or enter password.';
+    }
+
+  } catch (err) {
+    console.error('Failed querying security status:', err);
+  }
+}
+
+async function attemptPoliceUnlock() {
+  const passInput = document.getElementById('operatorPasswordInput');
+  const password = passInput ? passInput.value : '';
+  const alertBar = document.getElementById('securityAlertBar');
+  const alertText = document.getElementById('securityAlertText');
+  const overlay = document.getElementById('policeSecurityGateway');
+
+  if (!password) {
+    if (alertBar) alertBar.className = 'security-alert-bar danger';
+    if (alertText) alertText.textContent = 'Please enter operator password.';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/security/unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: password })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      isStudioUnlocked = true;
+      if (alertBar) alertBar.className = 'security-alert-bar success';
+      if (alertText) alertText.textContent = data.message;
+      
+      showToast(`Authenticated: ${data.details.officer_name || 'Police Operator'}`, 'success');
+      
+      setTimeout(() => {
+        if (overlay) overlay.classList.add('hidden');
+      }, 500);
+    } else {
+      if (alertBar) alertBar.className = 'security-alert-bar danger';
+      if (alertText) alertText.textContent = data.message || 'Authentication failed.';
+      showToast(data.message || 'Authentication Failed', 'error');
+    }
+  } catch (err) {
+    if (alertBar) alertBar.className = 'security-alert-bar danger';
+    if (alertText) alertText.textContent = 'Network or server communication error.';
+  }
+}
+
+function openKeygenModal() {
+  const modal = document.getElementById('keygenModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+
+  const select = document.getElementById('keygenTargetDriveSelect');
+  if (select) {
+    select.innerHTML = '';
+    if (connectedUsbDrives.length === 0) {
+      select.innerHTML = '<option value="">No USB drive detected. Insert USB and retry.</option>';
+    } else {
+      connectedUsbDrives.forEach((d, idx) => {
+        const opt = document.createElement('option');
+        opt.value = d.drive_letter;
+        opt.textContent = `${d.drive_letter} - ${d.model} (Serial: ${d.hardware_serial})`;
+        select.appendChild(opt);
+      });
+    }
+  }
+  onKeygenDriveSelected();
+}
+
+function closeKeygenModal() {
+  const modal = document.getElementById('keygenModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function onKeygenDriveSelected() {
+  const select = document.getElementById('keygenTargetDriveSelect');
+  const gradeBadge = document.getElementById('suitGradeBadge');
+  const scoreVal = document.getElementById('suitScoreVal');
+  const recText = document.getElementById('suitRecText');
+
+  if (!select || !select.value) return;
+  const chosen = connectedUsbDrives.find(d => d.drive_letter === select.value);
+  if (chosen && chosen.suitability) {
+    if (gradeBadge) gradeBadge.textContent = chosen.suitability.grade.split(' ')[0] + ' ' + chosen.suitability.grade.split(' ')[1];
+    if (scoreVal) scoreVal.textContent = chosen.suitability.score_percent + '%';
+    if (recText) recText.textContent = chosen.suitability.recommendation;
+  }
+}
+
+async function issueHardwareDongleKey() {
+  const select = document.getElementById('keygenTargetDriveSelect');
+  const officer = document.getElementById('keygenOfficerName').value;
+  const badge = document.getElementById('keygenBadgeId').value;
+  const station = document.getElementById('keygenStationCode').value;
+  const clearance = document.getElementById('keygenClearance').value;
+
+  if (!select || !select.value) {
+    showToast('Please select a target USB drive.', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/security/issue-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        drive_letter: select.value,
+        officer_name: officer,
+        badge_id: badge,
+        station_code: station,
+        clearance_level: clearance
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast(`Key issued to ${select.value}! Security Score: ${data.token_summary.security_score}%`, 'success');
+      closeKeygenModal();
+      checkUsbHardwareStatus();
+    } else {
+      showToast(`Failed: ${data.error}`, 'error');
+    }
+  } catch (err) {
+    showToast('Error communicating with key generator.', 'error');
+  }
+}
+
+// Attach Enter key to password field
+document.addEventListener('DOMContentLoaded', () => {
+  const passInput = document.getElementById('operatorPasswordInput');
+  if (passInput) {
+    passInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') attemptPoliceUnlock();
+    });
+  }
+  // Initial check
+  checkUsbHardwareStatus();
+  // Periodic USB check every 4 seconds
+  setInterval(() => {
+    if (!isStudioUnlocked) checkUsbHardwareStatus();
+  }, 4000);
+});
